@@ -1,4 +1,4 @@
-// process.chdir('/home/zlyfer/DiscordBots');
+//process.chdir('/home/zlyfer/DiscordBots/DiscordDynChanBot');
 const Discord = require('discord.js');
 const client = new Discord.Client();
 
@@ -254,7 +254,7 @@ client.on('message', (message) => {
 							"givePermissions": {"parameter": "true/false", "desc": "Specifies whether the channel 'creator' should get mute and deaf rights for that channel."},
 							"configRole": {"parameter": "text/false", "desc": "Specifies the role the bot listens to. 'false' = owner only."}
 						}
-						var reply = message.member + ": Help is on the way:\n";
+						var reply = "help is on the way:\n";
 						reply += "Make sure to use **" + botPrefix + "** as prefix!\n";
 						reply += "The format is: **COMMAND** __PARAMETER__ - *DESCRIPTION*.\n\n";
 						for (var key in helpObj) {
@@ -263,7 +263,7 @@ client.on('message', (message) => {
 						message.reply(reply);
 						break;
 					case "showSettings":
-						var reply = message.member + ": These are the current settings and their values:\n";
+						var reply = "these are the current settings and their values:\n";
 						for (var key in guildConfig) {
 							reply += "**" + key + "**: __" + guildConfig[key] + "__\n";
 						}
@@ -273,20 +273,20 @@ client.on('message', (message) => {
 						if (newValue == "true" || newValue == "false") {
 							changeValid = true;
 						} else {
-							message.reply(message.member + ": Please use either true or false.");
+							message.reply("please use either true or false.");
 						}
 						break;
 						break;
 					case "mainChannel":
 						if (newValue == guildConfig.chnPrefix) {
-							message.reply(message.member + ": " + "**mainChannel** must not be the same as **channelPrefix**.");
+							message.reply("**mainChannel** must not be the same as **channelPrefix**.");
 						} else {
 							changeValid = true;
 						}
 						break;
 					case "category":
 						if (newValue.length < 1) {
-							message.reply(message.member + ": " + "You need to specify at least one character.");
+							message.reply("you need to specify at least one character.");
 						}else {
 							changeValid = true;
 						}
@@ -294,14 +294,14 @@ client.on('message', (message) => {
 					case "userLimit":
 						changeValid = /^[0-9]{1,2}$/i.test(newValue);
 						if (changeValid == false) {
-							message.reply(message.member + ": You need to specify a number between 0 and 99.");
+							message.reply("you need to specify a number between 0 and 99.");
 						}
 						break;
 					case "channelPrefix":
 						if (newValue.length < 1) {
-							message.reply(message.member + ": " + "You need to specify at least one character.");
+							message.reply("you need to specify at least one character.");
 						} else if (newValue == guildConfig.mainChannel) {
-							message.reply(message.member + ": " + "**channelPrefix** must not be the same as **mainChannel**.");
+							message.reply("**channelPrefix** must not be the same as **mainChannel**.");
 						} else {
 							changeValid = true;
 						}
@@ -311,7 +311,7 @@ client.on('message', (message) => {
 						if (newValue == "true" || newValue == "false") {
 							changeValid = true;
 						} else {
-							message.reply(message.member + ": Please use either true or false.");
+							message.reply("please use either true or false.");
 						}
 						break;
 					case "configRole":
@@ -320,7 +320,7 @@ client.on('message', (message) => {
 						} else {
 							var role = message.guild.roles.find("name", newValue);
 							if (role == null) {
-								message.reply(message.member + ": You need to specifiy an existing role. Please add the role **" + newValue + "** and try again.");
+								message.reply("you need to specifiy an existing role. Please add the role **" + newValue + "** and try again.");
 							} else {
 								changeValid = true;
 							}
@@ -329,13 +329,13 @@ client.on('message', (message) => {
 				}
 				if (changeValid == true) {
 					changeConfig(message.guild, cmd, newValue);
-					message.reply(message.member + ": **" + cmd + "** *has been changed to* **" + newValue + "**.");
+					message.reply("**" + cmd + "** *has been changed to* **" + newValue + "**.");
 				}
 			} else {
-				message.reply("Sorry " + message.member + ", but you seem to lack on rights to use me.")
+				message.reply("sorry but you seem to lack on rights to use me.")
 			}
 		} else {
-			message.reply("Sorry, but I am supposed to be controlled via a text channel on a discord server.");
+			message.reply("sorry, but I am supposed to be controlled via a text channel on a discord server.");
 		}
 	}
 });

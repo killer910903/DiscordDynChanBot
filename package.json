@@ -4,7 +4,7 @@
   "description": "Dynamic temporary channel for every server. Keep your server clean!",
   "main": "index.js",
   "dependencies": {
-    "discord.js": "11.3.0"
+    "discord.js": "11.3.2"
   },
   "devDependencies": {},
   "scripts": {
