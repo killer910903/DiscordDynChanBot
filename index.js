@@ -1,4 +1,4 @@
-//process.chdir('/home/zlyfer/DiscordBots/DiscordDynChanBot');
+process.chdir('/home/zlyfer/DiscordBots/DiscordDynChanBot');
 const Discord = require('discord.js');
 const client = new Discord.Client();
 
