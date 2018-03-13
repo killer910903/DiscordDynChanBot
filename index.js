@@ -9,7 +9,12 @@ const configTemplate = require("./configTemplate.json");
 const botPrefix = "~zldc~";
 
 function getConfig(guildID) {
-	var config = require(guildConfigFolder + guildID + ".json");
+	var cfile = guildConfigFolder + guildID + ".json";
+	if (fs.existsSync(cfile)) {
+		var config = require(cfile);
+	} else {
+		var config = configTemplate;
+	}
 	return config;
 }
 
