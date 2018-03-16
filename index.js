@@ -114,45 +114,47 @@ client.on('guildCreate', (guild) => {
 })
 
 client.on('voiceStateUpdate', (oldMember, newMember) => {
-	if (oldMember.voiceChannel != undefined) {
-		var guild = newMember.guild;
-		var guildConfig = getConfig(guild.id);
-		var channel = oldMember.voiceChannel;
-		var channelName = channel.name;
-		if (channelName.indexOf(guildConfig.channelPrefix) == 0) {
-			var members = channel.members.array();
-			if (members.length == 0) {
-				if (checkPerm(guild, "MANAGE_CHANNELS")) {
-					channel.delete();
-				}
-			} else {
-				var memberName = oldMember.user.username;
-				if (channelName.indexOf(memberName) != -1) {
-					var channelChange = true;
-					if (newMember.voiceChannel != undefined) {
-						var newChannel = newMember.voiceChannel;
-						if (newChannel.id == channel.id) {
-							var channelChange = false;
-						}
+	var guildConfig = getConfig(guild.id);
+	if (guildConfig.enable) {
+		if (oldMember.voiceChannel != undefined) {
+			var guild = newMember.guild;
+			var channel = oldMember.voiceChannel;
+			var channelName = channel.name;
+			if (channelName.indexOf(guildConfig.channelPrefix) == 0) {
+				var members = channel.members.array();
+				if (members.length == 0) {
+					if (checkPerm(guild, "MANAGE_CHANNELS")) {
+						channel.delete();
 					}
-					if (channelChange == true) {
-						var members = guild.members.array();
-						for (var member = 0; member < members.length; member++) {
-							var voiceChannelID = members[member].voiceChannelID;
-							if (voiceChannelID == channel.id) {
-								var newOwner = members[member];
-								if (channelChange == true) {
-									if (memberName != newOwner.user.username) {
-										if (checkPerm(guild, "MANAGE_CHANNELS")) {
-											channel.edit({name: guildConfig.channelPrefix + " " + newOwner.user.username});
-										}
-										if (guildConfig.givePermissions == true) {
-											if (checkPerm(guild, "MANAGE_ROLES")) {
-												channel.overwritePermissions(oldMember, {MUTE_MEMBERS: false, DEAFEN_MEMBERS: false});
-												channel.overwritePermissions(newOwner, {MUTE_MEMBERS: true, DEAFEN_MEMBERS: true});
+				} else {
+					var memberName = oldMember.user.username;
+					if (channelName.indexOf(memberName) != -1) {
+						var channelChange = true;
+						if (newMember.voiceChannel != undefined) {
+							var newChannel = newMember.voiceChannel;
+							if (newChannel.id == channel.id) {
+								var channelChange = false;
+							}
+						}
+						if (channelChange == true) {
+							var members = guild.members.array();
+							for (var member = 0; member < members.length; member++) {
+								var voiceChannelID = members[member].voiceChannelID;
+								if (voiceChannelID == channel.id) {
+									var newOwner = members[member];
+									if (channelChange == true) {
+										if (memberName != newOwner.user.username) {
+											if (checkPerm(guild, "MANAGE_CHANNELS")) {
+												channel.edit({name: guildConfig.channelPrefix + " " + newOwner.user.username});
 											}
+											if (guildConfig.givePermissions == true) {
+												if (checkPerm(guild, "MANAGE_ROLES")) {
+													channel.overwritePermissions(oldMember, {MUTE_MEMBERS: false, DEAFEN_MEMBERS: false});
+													channel.overwritePermissions(newOwner, {MUTE_MEMBERS: true, DEAFEN_MEMBERS: true});
+												}
+											}
+											channelChange = false;
 										}
-										channelChange = false;
 									}
 								}
 							}
@@ -161,56 +163,58 @@ client.on('voiceStateUpdate', (oldMember, newMember) => {
 				}
 			}
 		}
-	}
-	if (newMember.voiceChannel != undefined) {
-		var guild = newMember.guild;
-		var guildConfig = getConfig(guild.id);
-		if (newMember.voiceChannel.name == guildConfig.mainChannel) {
-			if (checkPerm(guild, "MANAGE_CHANNELS")) {
-				guild.createChannel(guildConfig.channelPrefix + " " + newMember.user.username, "voice");
+		if (newMember.voiceChannel != undefined) {
+			var guild = newMember.guild;
+			var guildConfig = getConfig(guild.id);
+			if (newMember.voiceChannel.name == guildConfig.mainChannel) {
+				if (checkPerm(guild, "MANAGE_CHANNELS")) {
+					guild.createChannel(guildConfig.channelPrefix + " " + newMember.user.username, "voice");
+				}
 			}
 		}
 	}
 })
 
 client.on('channelCreate', (channel) => {
-	var type = channel.type;
-	if (type ==	"voice") {
-		var guild = channel.guild;
-		var guildConfig = getConfig(guild.id);
-		var name = channel.name;
-		if (name.indexOf(guildConfig.channelPrefix) == 0) {
-			if (guildConfig.category != false) {
-				var channels = guild.channels.array();
-				var categoryExists = false;
-				for (var channeli = 0; channeli < channels.length; channeli++) {
-					if (channels[channeli].type == "category") {
-						if (channels[channeli].name == guildConfig.category) {
-							if (checkPerm(guild, "MANAGE_CHANNELS")) {
-								channel.setParent(channels[channeli].id);
+	var guildConfig = getConfig(guild.id);
+	if (guildConfig.enable) {
+		var type = channel.type;
+		if (type ==	"voice") {
+			var guild = channel.guild;
+			var name = channel.name;
+			if (name.indexOf(guildConfig.channelPrefix) == 0) {
+				if (guildConfig.category != false) {
+					var channels = guild.channels.array();
+					var categoryExists = false;
+					for (var channeli = 0; channeli < channels.length; channeli++) {
+						if (channels[channeli].type == "category") {
+							if (channels[channeli].name == guildConfig.category) {
+								if (checkPerm(guild, "MANAGE_CHANNELS")) {
+									channel.setParent(channels[channeli].id);
+								}
+								categoryExists = true;
 							}
-							categoryExists = true;
 						}
 					}
-				}
-				if (categoryExists == false) {
-					changeConfig(guild, "category", "false");
-				}
-			}
-			var creatorName = name.replace(guildConfig.channelPrefix + " ", "");
-			var members = guild.members.array();
-			for (var member = 0; member < members.length; member++) {
-				if (members[member].user.username == creatorName) {
-					creator = members[member];
-					if (checkPerm(guild, "MOVE_MEMBERS")) {
-						creator.edit({channel: channel});
+					if (categoryExists == false) {
+						changeConfig(guild, "category", "false");
 					}
-					if (checkPerm(guild, "MANAGE_CHANNELS")) {
-						channel.edit({bitrate: 96000, userLimit: guildConfig.userLimit});
-					}
-					if (guildConfig.givePermissions == true) {
-						if (checkPerm(guild, "MANAGE_ROLES")) {
-							channel.overwritePermissions(creator.user, {MUTE_MEMBERS: true, DEAFEN_MEMBERS: true});
+				}
+				var creatorName = name.replace(guildConfig.channelPrefix + " ", "");
+				var members = guild.members.array();
+				for (var member = 0; member < members.length; member++) {
+					if (members[member].user.username == creatorName) {
+						creator = members[member];
+						if (checkPerm(guild, "MOVE_MEMBERS")) {
+							creator.edit({channel: channel});
+						}
+						if (checkPerm(guild, "MANAGE_CHANNELS")) {
+							channel.edit({bitrate: 96000, userLimit: guildConfig.userLimit});
+						}
+						if (guildConfig.givePermissions == true) {
+							if (checkPerm(guild, "MANAGE_ROLES")) {
+								channel.overwritePermissions(creator.user, {MUTE_MEMBERS: true, DEAFEN_MEMBERS: true});
+							}
 						}
 					}
 				}
