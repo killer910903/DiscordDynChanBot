@@ -114,10 +114,10 @@ client.on('guildCreate', (guild) => {
 })
 
 client.on('voiceStateUpdate', (oldMember, newMember) => {
+	var guild = newMember.guild;
 	var guildConfig = getConfig(guild.id);
 	if (guildConfig.enable) {
 		if (oldMember.voiceChannel != undefined) {
-			var guild = newMember.guild;
 			var channel = oldMember.voiceChannel;
 			var channelName = channel.name;
 			if (channelName.indexOf(guildConfig.channelPrefix) == 0) {
@@ -176,11 +176,11 @@ client.on('voiceStateUpdate', (oldMember, newMember) => {
 })
 
 client.on('channelCreate', (channel) => {
+	var guild = channel.guild;
 	var guildConfig = getConfig(guild.id);
 	if (guildConfig.enable) {
 		var type = channel.type;
 		if (type ==	"voice") {
-			var guild = channel.guild;
 			var name = channel.name;
 			if (name.indexOf(guildConfig.channelPrefix) == 0) {
 				if (guildConfig.category != false) {
