@@ -213,7 +213,7 @@ client.on('channelCreate', (channel) => {
 						}
 						if (guildConfig.givePermissions == true) {
 							if (checkPerm(guild, "MANAGE_ROLES")) {
-								channel.overwritePermissions(creator.user, {MUTE_MEMBERS: true, DEAFEN_MEMBERS: true});
+								channel.overwritePermissions(creator, {MUTE_MEMBERS: true, DEAFEN_MEMBERS: true});
 							}
 						}
 					}
