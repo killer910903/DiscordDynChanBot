@@ -105,8 +105,8 @@ function configSetup() {
 	}
 }
 
-bot.on('ready', () => {
-	bot.user.setPresence({
+client.on('ready', () => {
+	client.user.setPresence({
 	  "status": "online",
 	  "afk": false,
 	  "game": {
