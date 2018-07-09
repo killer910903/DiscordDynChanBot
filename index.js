@@ -1,3 +1,4 @@
+// TODO: Do permissions checks before every action.
 process.chdir('/home/zlyfer/DiscordBots/DiscordDynChanBot');
 const Discord = require('discord.js');
 const client = new Discord.Client();
@@ -365,8 +366,10 @@ client.on('message', (message) => {
             break;
             break;
           case "mainChannel":
-            if (newValue == guildConfig.chnPrefix) {
+            if (newValue == guildConfig.channelPrefix) {
               message.reply("**mainChannel** must not be the same as **channelPrefix**.");
+            } else if (newValue[0] == guildConfig.channelPrefix[0]) {
+              message.reply("**mainChannel** must not start with the same character as **channelPrefix**.");
             } else {
               changeValid = true;
             }
@@ -389,10 +392,11 @@ client.on('message', (message) => {
               message.reply("you need to specify at least one character.");
             } else if (newValue == guildConfig.mainChannel) {
               message.reply("**channelPrefix** must not be the same as **mainChannel**.");
+            } else if (newValue[0] == guildConfig.mainChannel[0]) {
+              message.reply("**channelPrefix** must not start with the same character as **mainChannel**.");
             } else {
               changeValid = true;
             }
-            changeValid = true;
             break;
           case "givePermissions":
             if (newValue == "true" || newValue == "false") {
