@@ -114,7 +114,7 @@ client.on('ready', () => {
       "status": "online",
       "afk": false,
       "game": {
-        "name": "Use " + botPrefix + "helpfor help!"
+        "name": "Use " + botPrefix + "help for help!"
       }
     })
     .then(console.log("Bot ready."));
