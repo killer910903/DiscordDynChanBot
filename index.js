@@ -330,11 +330,11 @@ client.on('message', (message) => {
               },
               "givePermissions": {
                 "parameter": "true/false",
-                "desc": "Specifies whether the channel 'creator' should get mute and deaf rights for that channel."
+                "desc": "Specifies whether the channel 'creator' should get mute and deaf rights for that channel or not."
               },
               "giveChannelPermissions": {
                 "parameter": "true/false",
-                "desc": "Specifies whether the channel 'creator' should get the permissions to change the channel itself."
+                "desc": "Specifies whether the channel 'creator' should get the permissions to change the channel itself or not."
               },
               "configRole": {
                 "parameter": "text/false",
