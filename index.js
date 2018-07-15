@@ -11,11 +11,13 @@ const botPrefix = "~zldc~";
 
 function applyUserRolesPermissions(guild, guildConfig, creator, channel) {
   if (checkPerm(guild, "MANAGE_ROLES")) {
-    let role = guild.roles.find('name', "@everyone");
-    if (role) {
-      channel.overwritePermissions(role, {
-        "VIEW_CHANNEL": false
-      });
+    if (guildConfig.userRoles.indexOf("@everyone") == -1) {
+      let role = guild.roles.find('name', "@everyone");
+      if (role) {
+        channel.overwritePermissions(role, {
+          "VIEW_CHANNEL": false
+        });
+      }
     }
     channel.overwritePermissions(creator, {
       "VIEW_CHANNEL": true
