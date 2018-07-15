@@ -20,20 +20,22 @@ function applyUserRolesPermissions(guild, guildConfig, creator, channel) {
     channel.overwritePermissions(creator, {
       "VIEW_CHANNEL": true
     });
-    let guildroles = guild.roles.array();
-    let allow = true;
-    for (let i = 0; i < guildroles.length; i++) {
-      let userRole = guildroles[i].name;
-      let role = guild.roles.find('name', userRole);
-      if (role) {
-        if (guildConfig.userRoles.indexOf(userRole) != -1) {
-          allow = true;
-        } else {
-          allow = false;
+    if (guildConfig.userRoles.indexOf("@everyone") == -1) {
+      let guildroles = guild.roles.array();
+      let allow = true;
+      for (let i = 0; i < guildroles.length; i++) {
+        let userRole = guildroles[i].name;
+        let role = guild.roles.find('name', userRole);
+        if (role) {
+          if (guildConfig.userRoles.indexOf(userRole) != -1) {
+            allow = true;
+          } else {
+            allow = false;
+          }
+          channel.overwritePermissions(role, {
+            "VIEW_CHANNEL": allow
+          });
         }
-        channel.overwritePermissions(role, {
-          "VIEW_CHANNEL": allow
-        });
       }
     }
   }
