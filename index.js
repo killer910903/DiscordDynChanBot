@@ -9,6 +9,49 @@ const guildConfigFolder = "./guildConfig/";
 const configTemplate = require("./configTemplate.json");
 const botPrefix = "~zldc~";
 
+function applyUserRolesPermissions(guild, guildConfig, creator, channel) {
+  if (checkPerm(guild, "MANAGE_ROLES")) {
+    let role = guild.roles.find('name', "@everyone");
+    if (role) {
+      channel.overwritePermissions(role, {
+        "VIEW_CHANNEL": false
+      });
+    }
+    channel.overwritePermissions(creator, {
+      "VIEW_CHANNEL": true
+    });
+    let guildroles = guild.roles.array();
+    let allow = true;
+    for (let i = 0; i < guildroles.length; i++) {
+      let userRole = guildroles[i].name;
+      let role = guild.roles.find('name', userRole);
+      if (role) {
+        if (guildConfig.userRoles.indexOf(userRole) != -1) {
+          allow = true;
+        } else {
+          allow = false;
+        }
+        channel.overwritePermissions(role, {
+          "VIEW_CHANNEL": allow
+        });
+      }
+    }
+  }
+}
+
+function secureName(name) {
+  name = name.replace(new RegExp("'", 'g'), '');
+  name = name.replace(new RegExp('’', 'g'), '');
+  name = name.replace(new RegExp('`', 'g'), '');
+  name = name.replace(new RegExp(' - ', 'g'), ' ');
+  name = name.replace(new RegExp('- ', 'g'), ' ');
+  name = name.replace(new RegExp(' -', 'g'), ' ');
+  name = name.replace(new RegExp('-', 'g'), ' ');
+  name = name.replace(/ [^\w\s!] |[^\w\s!] | [^\w\s!]/gi, ' ')
+  name = name.replace(/[^\w\s!]/gi, '');
+  return name;
+}
+
 function getConfig(guildID) {
   var cfile = guildConfigFolder + guildID + ".json";
   if (fs.existsSync(cfile)) {
@@ -64,6 +107,7 @@ function applyChanges(guild, changeObj) {
             cchannel.overwritePermissions(member.user, p)
               .then(console.log("Applied changes."));
           }
+          applyUserRolesPermissions(guild, guildConfig, member, cchannel);
         }
       }
     }
@@ -77,9 +121,9 @@ function changeConfig(guild, key, newValue) {
     "category": guildConfig.category,
     "channelPrefix": guildConfig.channelPrefix
   };
-  if ("true".indexOf(newValue) != -1) {
+  if (newValue == "true") {
     newValue = true;
-  } else if ("false".indexOf(newValue) != -1) {
+  } else if (newValue == "false") {
     newValue = false;
   }
   guildConfig[key] = newValue;
@@ -196,6 +240,16 @@ client.on('voiceStateUpdate', (oldMember, newMember) => {
                   }
                 }
               }
+              applyUserRolesPermissions(guild, guildConfig, newOwner, channel);
+              if (checkPerm(guild, "MANAGE_ROLES")) {
+                let role = guild.roles.find('name', "@everyone");
+                if (role) {
+                  channel.overwritePermissions(oldMember, {
+                      "VIEW_CHANNEL": false
+                    })
+                    .then(console.log("Changed some permissions for userRoles."));
+                }
+              }
             }
           }
         }
@@ -243,7 +297,7 @@ client.on('channelCreate', (channel) => {
         let p;
         for (var member = 0; member < members.length; member++) {
           if (members[member].user.username == creatorName) {
-            creator = members[member];
+            var creator = members[member];
             if (checkPerm(guild, "MOVE_MEMBERS")) {
               creator.edit({
                 channel: channel
@@ -263,6 +317,7 @@ client.on('channelCreate', (channel) => {
                 channel.overwritePermissions(creator, p);
               }
             }
+            applyUserRolesPermissions(guild, guildConfig, creator, channel);
           }
         }
       }
@@ -339,6 +394,10 @@ client.on('message', (message) => {
               "configRole": {
                 "parameter": "text/false",
                 "desc": "Specifies the role the bot listens to. 'false' = owner only."
+              },
+              "userRoles": {
+                "parameter": "text",
+                "desc": "Specify a list of roles who can actually see the temporary channels. If a given role is already present in the list it will be removed from it. Can be comma-seperated: 'Admins, Moderators, Users'."
               }
             }
             var reply = "help is on the way:\n";
@@ -353,7 +412,13 @@ client.on('message', (message) => {
           case "showSettings":
             var reply = "these are the current settings and their values:\n";
             for (var key in guildConfig) {
-              reply += "**" + key + "**: __" + guildConfig[key] + "__\n";
+              let value = guildConfig[key];
+              if (Array.isArray(guildConfig[key]) == true) {
+                if (guildConfig[key].length == 0) {
+                  value = "None";
+                }
+              }
+              reply += "**" + key + "**: __" + value + "__\n";
             }
             message.reply(reply);
             break;
@@ -424,9 +489,43 @@ client.on('message', (message) => {
               }
             }
             break;
+          case "userRoles":
+            if (newValue.length > 0 && newValue[0] != ",") {
+              var newValues = newValue.split(',');
+              for (let i = 0; i < newValues.length; i++) {
+                let nv = newValues[i];
+                if (nv.length > 0 && nv != '"' && nv != "'" && nv != ',') {
+                  // nv = secureName(nv);
+                  // nv = nv.toLowerCase();
+                  if (nv[0] == " ") {
+                    nv = nv.slice(1);
+                  }
+                  let iof = guildConfig.userRoles.indexOf(nv);
+                  let role = message.guild.roles.find("name", nv);
+                  if (iof != -1) {
+                    changeValid = true;
+                    guildConfig.userRoles.splice(iof, 1);
+                  } else if (role) {
+                    changeValid = true;
+                    guildConfig.userRoles.push(nv);
+                  } else {
+                    message.reply(`could not add **${nv}** to the list since it's not a existing role.`);
+                  }
+                }
+              }
+              newValue = guildConfig.userRoles;
+            } else {
+              message.reply("you need to specify at least one existing role.");
+            }
+            break;
         }
         if (changeValid == true) {
           changeConfig(message.guild, cmd, newValue);
+          if (Array.isArray(newValue) == true) {
+            if (newValue.length == 0) {
+              newValue = "None";
+            }
+          }
           message.reply("**" + cmd + "** *has been changed to* **" + newValue + "**.");
         }
       } else {

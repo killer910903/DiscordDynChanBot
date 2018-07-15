@@ -6,5 +6,6 @@
 	"channelPrefix": "🕑",
 	"givePermissions": true,
 	"giveChannelPermissions": false,
-	"configRole": "@everyone"
+	"configRole": "@everyone",
+	"userRoles": ["@everyone"]
 }
