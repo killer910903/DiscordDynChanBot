@@ -247,12 +247,12 @@ client.on('voiceStateUpdate', (oldMember, newMember) => {
               applyUserRolesPermissions(guild, guildConfig, newOwner, channel);
               if (checkPerm(guild, "MANAGE_ROLES")) {
                 let role = guild.roles.find('name', "@everyone");
-                if (role) {
-                  channel.overwritePermissions(oldMember, {
-                      "VIEW_CHANNEL": false
-                    })
-                    .then(console.log("Changed some permissions for userRoles."));
-                }
+                // if (role) {
+                //   channel.overwritePermissions(oldMember, {
+                //       "VIEW_CHANNEL": false
+                //     })
+                //     .then(console.log("Changed some permissions for userRoles."));
+                // }
               }
             }
           }
