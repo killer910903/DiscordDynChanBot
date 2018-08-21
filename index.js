@@ -230,6 +230,7 @@ client.on('voiceStateUpdate', (oldMember, newMember) => {
                             oMP["DEAFEN_MEMBERS"] = false;
                             nMP["MUTE_MEMBERS"] = true;
                             nMP["DEAFEN_MEMBERS"] = true;
+                            console.log("test");
                           }
                           if (guildConfig.giveChannelPermissions) {
                             oMP["MANAGE_CHANNELS"] = false;
@@ -247,15 +248,15 @@ client.on('voiceStateUpdate', (oldMember, newMember) => {
                 }
               }
               applyUserRolesPermissions(guild, guildConfig, newOwner, channel);
-              if (checkPerm(guild, "MANAGE_ROLES")) {
-                let role = guild.roles.find('name', "@everyone");
-                // if (role) {
-                //   channel.overwritePermissions(oldMember, {
-                //       "VIEW_CHANNEL": false
-                //     })
-                //     .then(console.log("Changed some permissions for userRoles."));
-                // }
-              }
+              // if (checkPerm(guild, "MANAGE_ROLES")) {
+              // let role = guild.roles.find('name', "@everyone");
+              // if (role) {
+              //   channel.overwritePermissions(oldMember, {
+              //       "VIEW_CHANNEL": false
+              //     })
+              //     .then(console.log("Changed some permissions for userRoles."));
+              // }
+              // }
             }
           }
         }
