@@ -100,10 +100,13 @@ function applyChanges(guild, changeObj) {
             userLimit: guildConfig.userLimit
           });
         }
+        console.log("1");
         if (checkPerm(guild, "MANAGE_ROLES")) {
+          console.log("2");
           var creatorName = channelName.replace(guildConfig.channelPrefix + " ", "");
           var member = guild.members.find('displayName', creatorName);
           if (member) {
+            console.log("3");
             p = {};
             p["MUTE_MEMBERS"] = guildConfig.givePermissions;
             p["DEAFEN_MEMBERS"] = guildConfig.givePermissions;
