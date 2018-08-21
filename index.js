@@ -100,13 +100,10 @@ function applyChanges(guild, changeObj) {
             userLimit: guildConfig.userLimit
           });
         }
-        console.log("1");
         if (checkPerm(guild, "MANAGE_ROLES")) {
-          console.log("2");
           var creatorName = channelName.replace(guildConfig.channelPrefix + " ", "");
           var member = guild.members.find('displayName', creatorName);
           if (member) {
-            console.log("3");
             p = {};
             p["MUTE_MEMBERS"] = guildConfig.givePermissions;
             p["DEAFEN_MEMBERS"] = guildConfig.givePermissions;
@@ -238,8 +235,10 @@ client.on('voiceStateUpdate', (oldMember, newMember) => {
                             oMP["MANAGE_CHANNELS"] = false;
                             nMP["MANAGE_CHANNELS"] = true;
                           }
-                          channel.overwritePermissions(oldMember, oMP);
-                          channel.overwritePermissions(newOwner, nMP);
+                          channel.overwritePermissions(oldMember, oMP)
+                            .then(console.log("Changed permissions for a old member."));
+                          channel.overwritePermissions(newOwner, nMP)
+                            .then(console.log("Changed permissions for a new member."));
                         }
                       }
                       channelChange = false;
