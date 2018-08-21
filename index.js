@@ -230,7 +230,8 @@ client.on('voiceStateUpdate', (oldMember, newMember) => {
                             oMP["DEAFEN_MEMBERS"] = false;
                             nMP["MUTE_MEMBERS"] = true;
                             nMP["DEAFEN_MEMBERS"] = true;
-                            console.log("test");
+                            console.log(nMP);
+                            console.log(newOwner);
                           }
                           if (guildConfig.giveChannelPermissions) {
                             oMP["MANAGE_CHANNELS"] = false;
