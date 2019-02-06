@@ -1,0 +1,43 @@
+{
+  "enable": true,
+  "controlRoles": ["@everyone"],
+  "customBotPrefix": false,
+  "configurations": [
+    {
+      "name": "Configuration 1",
+      "triggerChannel": "0",
+      "triggerRoles": ["@everyone"],
+      "preventNameChange": true,
+      "createTextChannel": false,
+      "voice": {
+        "category": "0",
+        "prefix": "optional",
+        "suffix": "optional",
+        "name": "UID|NUM|USR|FIX",
+        "permissions": [
+          {
+            "roles": ["@everyone"],
+            "allow": [],
+            "deny": []
+          }
+        ],
+        "userlimit": 0,
+        "bitrate": 640000
+      },
+      "text": {
+        "category": "0",
+        "prefix": "optional",
+        "suffix": "optional",
+        "name": "UID|NUM|USR|FIX",
+        "permissions": [
+          {
+            "roles": ["@everyone"],
+            "allow": [],
+            "deny": []
+          }
+        ],
+        "nsfw": false
+      }
+    }
+  ]
+}

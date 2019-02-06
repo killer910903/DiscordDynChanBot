@@ -1,26 +1,10 @@
 {
-  "name": "discorddynchanbot",
+  "name": "TestZL",
   "version": "1.0.0",
-  "description": "Dynamic temporary channel for every server. Keep your server clean!",
+  "description": "Discord Bot from zlyfa!",
   "main": "index.js",
+  "author": "zlyfa!",
   "dependencies": {
-    "discord.js": "11.3.2"
-  },
-  "devDependencies": {},
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/zlyfer/DiscordDynChanBot.git"
-  },
-  "keywords": [
-    "Discord"
-  ],
-  "author": "zlyfer",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/zlyfer/DiscordDynChanBot/issues"
-  },
-  "homepage": "https://github.com/zlyfer/DiscordDynChanBot#readme"
+    "discord.js": "11.4.2"
+  }
 }
