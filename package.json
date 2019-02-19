@@ -5,6 +5,7 @@
   "main": "index.js",
   "author": "zlyfa!",
   "dependencies": {
-    "discord.js": "11.4.2"
+    "discord.js": "11.4.2",
+    "shortid": "^2.2.14"
   }
 }

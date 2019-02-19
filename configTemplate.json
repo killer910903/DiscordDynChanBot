@@ -1,6 +1,6 @@
 {
-  "enable": true,
-  "controlRoles": ["@everyone"],
-  "customBotPrefix": false,
-  "configurations": []
+	"toggle": "on",
+	"controlRoles": [],
+	"customBotPrefix": false,
+	"configurations": []
 }
