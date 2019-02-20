@@ -11,37 +11,11 @@ class DynChanGuild {
 			configID: null,
 			configName: null,
 			state: null,
-			user: null
+			user: null,
+			detail: "voice"
 		};
-		/*
-		name
-		triggerChannel
-		triggerRoles
-		preventNameChange
-  o |---createTextChannel
-  p |	voice
-  t |		category
-  i |		prefix
-  o |		suffix
-  n |		name
-  a |		permissions
-  l |			roles
-	|			allow
-  l |			deny
-  i |		userlimit
-  n |		bitrate
-  k |---text
-			category
-			prefix
-			suffix
-			name
-			permissions
-				roles
-				allow
-				deny
-			nsfw
-		*/
 		this.data = this.loadData();
+		this.saveData();
 	}
 
 	loadData() {
@@ -111,5 +85,40 @@ class DynChanGuild {
 		});
 		return cfg;
 	}
+	hasTriggerRole(id) {
+		if (
+			this.data.configurations
+				.find(c => c.id == this.setup.configID)
+				.triggerRoles.find(r => r.id == id)
+		)
+			return true;
+		else return false;
+	}
+	toggleTriggerRole(id) {
+		let toggle = true;
+		let c = this.data.configurations.find(c => c.id == this.setup.configID);
+		if (c.triggerRoles.includes(id)) {
+			toggle = false;
+			let index = c.triggerRoles.indexOf(id);
+			c.triggerRoles.splice(index, 1);
+		} else {
+			toggle = true;
+			this.data.configurations
+				.find(c => c.id == this.setup.configID)
+				.triggerRoles.push(id);
+		}
+		this.saveData();
+		return toggle;
+	}
+	// changeBool(id, key, val) {
+	// 	let c = this.data.configurations.find(c => c.id == id);
+	// 	if (c) c[key] = val;
+	// 	this.saveData();
+	// }
+	// setVoiceCategory(id, val) {
+	// 	let c = this.data.configurations.find(c => c.id == id);
+	// 	if (c) c.voice.category = val;
+	// 	this.saveData();
+	// }
 }
 module.exports = DynChanGuild;

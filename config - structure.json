@@ -7,7 +7,6 @@
 			"name": "Unnamed Configuration",
 			"triggerChannel": "0",
 			"triggerRoles": [],
-			"preventNameChange": true,
 			"createTextChannel": false,
 			"voice": {
 				"category": "0",
