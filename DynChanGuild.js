@@ -12,7 +12,15 @@ class DynChanGuild {
 			configName: null,
 			state: null,
 			user: null,
-			detail: "voice"
+			detail: "voice",
+			reset: function() {
+				this.setup.state = "null";
+				this.setup.configID = null;
+				this.setup.configName = null;
+				this.setup.state = null;
+				this.setup.user = null;
+				this.setup.detail = "voice";
+			}
 		};
 		this.data = this.loadData();
 		this.saveData();

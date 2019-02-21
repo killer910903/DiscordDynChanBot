@@ -12,7 +12,7 @@ class DynChanConfiguration {
 			category: null,
 			prefix: null,
 			suffix: null,
-			name: 3, // 1: Unique ID, 2: Incrementing Number, 3: Username, 4: Nickname, 5: Fixed Name
+			name: 3, // 1: ID, 2: Number, 3: Username, 4: Nickname, Text: Custom
 			userlimit: 0,
 			bitrate: 640000
 		};
@@ -20,7 +20,7 @@ class DynChanConfiguration {
 			category: null,
 			prefix: null,
 			suffix: null,
-			name: 3, // 1: Unique ID, 2: Incrementing Number, 3: Username, 4: Nickname, 5: Fixed Name
+			name: 3, // 1: ID, 2: Number, 3: Username, 4: Nickname, Text: Custom
 			nsfw: false
 		};
 		this.permissions = [

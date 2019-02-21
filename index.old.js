@@ -1,6 +1,5 @@
-// TODO: Do permissions checks before every action.
-process.chdir('/home/zlyfer/DiscordBots/DiscordDynChanBot');
-const Discord = require('discord.js');
+process.chdir("/home/zlyfer/DiscordBots/DiscordDynChanBot");
+const Discord = require("discord.js");
 const client = new Discord.Client();
 
 const fs = require("fs");
@@ -12,10 +11,10 @@ const botPrefix = "~zldc~";
 function applyUserRolesPermissions(guild, guildConfig, creator, channel) {
 	if (checkPerm(guild, "MANAGE_ROLES")) {
 		if (guildConfig.userRoles.indexOf("@everyone") == -1) {
-			let role = guild.roles.find('name', "@everyone");
+			let role = guild.roles.find("name", "@everyone");
 			if (role) {
 				channel.overwritePermissions(role, {
-					"VIEW_CHANNEL": false
+					VIEW_CHANNEL: false
 				});
 			}
 		}
@@ -27,7 +26,7 @@ function applyUserRolesPermissions(guild, guildConfig, creator, channel) {
 			let allow = true;
 			for (let i = 0; i < guildroles.length; i++) {
 				let userRole = guildroles[i].name;
-				let role = guild.roles.find('name', userRole);
+				let role = guild.roles.find("name", userRole);
 				if (role) {
 					if (guildConfig.userRoles.indexOf(userRole) != -1) {
 						allow = true;
@@ -35,7 +34,7 @@ function applyUserRolesPermissions(guild, guildConfig, creator, channel) {
 						allow = false;
 					}
 					channel.overwritePermissions(role, {
-						"VIEW_CHANNEL": allow
+						VIEW_CHANNEL: allow
 					});
 				}
 			}
@@ -44,15 +43,15 @@ function applyUserRolesPermissions(guild, guildConfig, creator, channel) {
 }
 
 function secureName(name) {
-	name = name.replace(new RegExp("'", 'g'), '');
-	name = name.replace(new RegExp('’', 'g'), '');
-	name = name.replace(new RegExp('`', 'g'), '');
-	name = name.replace(new RegExp(' - ', 'g'), ' ');
-	name = name.replace(new RegExp('- ', 'g'), ' ');
-	name = name.replace(new RegExp(' -', 'g'), ' ');
-	name = name.replace(new RegExp('-', 'g'), ' ');
-	name = name.replace(/ [^\w\s!] |[^\w\s!] | [^\w\s!]/gi, ' ')
-	name = name.replace(/[^\w\s!]/gi, '');
+	name = name.replace(new RegExp("'", "g"), "");
+	name = name.replace(new RegExp("’", "g"), "");
+	name = name.replace(new RegExp("`", "g"), "");
+	name = name.replace(new RegExp(" - ", "g"), " ");
+	name = name.replace(new RegExp("- ", "g"), " ");
+	name = name.replace(new RegExp(" -", "g"), " ");
+	name = name.replace(new RegExp("-", "g"), " ");
+	name = name.replace(/ [^\w\s!] |[^\w\s!] | [^\w\s!]/gi, " ");
+	name = name.replace(/[^\w\s!]/gi, "");
 	return name;
 }
 
@@ -68,8 +67,8 @@ function getConfig(guildID) {
 
 function checkPerm(guild, permission) {
 	const botID = client.user.id;
-	var hasPerm = guild.members.find('id', botID).hasPermission(permission);
-	return (hasPerm)
+	var hasPerm = guild.members.find("id", botID).hasPermission(permission);
+	return hasPerm;
 }
 
 function applyChanges(guild, changeObj) {
@@ -92,23 +91,33 @@ function applyChanges(guild, changeObj) {
 			}
 		}
 		if (channelType == "voice") {
-			if (channelName.indexOf(guildConfig.channelPrefix) != -1 || channelName.indexOf(changeObj.channelPrefix) != -1) {
+			if (
+				channelName.indexOf(guildConfig.channelPrefix) != -1 ||
+				channelName.indexOf(changeObj.channelPrefix) != -1
+			) {
 				if (checkPerm(guild, "MANAGE_CHANNELS")) {
-					channelName = channelName.replace(changeObj.channelPrefix, guildConfig.channelPrefix);
+					channelName = channelName.replace(
+						changeObj.channelPrefix,
+						guildConfig.channelPrefix
+					);
 					cchannel.edit({
 						name: channelName,
 						userLimit: guildConfig.userLimit
 					});
 				}
 				if (checkPerm(guild, "MANAGE_ROLES")) {
-					var creatorName = channelName.replace(guildConfig.channelPrefix + " ", "");
-					var member = guild.members.find('displayName', creatorName);
+					var creatorName = channelName.replace(
+						guildConfig.channelPrefix + " ",
+						""
+					);
+					var member = guild.members.find("displayName", creatorName);
 					if (member) {
 						p = {};
 						p["MUTE_MEMBERS"] = guildConfig.givePermissions;
 						p["DEAFEN_MEMBERS"] = guildConfig.givePermissions;
 						p["MANAGE_CHANNELS"] = guildConfig.giveChannelPermissions;
-						cchannel.overwritePermissions(member.user, p)
+						cchannel
+							.overwritePermissions(member.user, p)
 							.then(console.log("Applied changes."));
 					}
 					applyUserRolesPermissions(guild, guildConfig, member, cchannel);
@@ -122,8 +131,8 @@ function changeConfig(guild, key, newValue) {
 	var guildFile = guildConfigFolder + guild.id + ".json";
 	var guildConfig = getConfig(guild.id);
 	var changeObj = {
-		"category": guildConfig.category,
-		"channelPrefix": guildConfig.channelPrefix
+		category: guildConfig.category,
+		channelPrefix: guildConfig.channelPrefix
 	};
 	if (newValue == "true") {
 		newValue = true;
@@ -131,7 +140,7 @@ function changeConfig(guild, key, newValue) {
 		newValue = false;
 	}
 	guildConfig[key] = newValue;
-	fs.writeFileSync(guildFile, JSON.stringify(guildConfig), 'utf-8')
+	fs.writeFileSync(guildFile, JSON.stringify(guildConfig), "utf-8");
 	applyChanges(guild, changeObj);
 }
 
@@ -140,7 +149,7 @@ function configSetup() {
 	for (guild = 0; guild < guilds.length; guild++) {
 		var guildFile = guildConfigFolder + guilds[guild].id + ".json";
 		if (!fs.existsSync(guildFile)) {
-			fs.writeFileSync(guildFile, JSON.stringify(configTemplate), 'utf-8');
+			fs.writeFileSync(guildFile, JSON.stringify(configTemplate), "utf-8");
 		} else {
 			var config = require(guildFile);
 			var change = false;
@@ -151,29 +160,30 @@ function configSetup() {
 				}
 			}
 			if (change == true) {
-				fs.writeFileSync(guildFile, JSON.stringify(config), 'utf-8');
+				fs.writeFileSync(guildFile, JSON.stringify(config), "utf-8");
 			}
 		}
 	}
 }
 
-client.on('ready', () => {
-	client.user.setPresence({
-			"status": "online",
-			"afk": false,
-			"game": {
-				"name": "Use " + botPrefix + "help for help!"
+client.on("ready", () => {
+	client.user
+		.setPresence({
+			status: "online",
+			afk: false,
+			game: {
+				name: "Use " + botPrefix + "help for help!"
 			}
 		})
 		.then(console.log("Bot ready."));
 	configSetup();
-})
+});
 
-client.on('guildCreate', (guild) => {
+client.on("guildCreate", guild => {
 	configSetup();
-})
+});
 
-client.on('channelUpdate', (oldChannel, newChannel) => {
+client.on("channelUpdate", (oldChannel, newChannel) => {
 	var guild = oldChannel.guild;
 	var guildConfig = getConfig(guild.id);
 	if (
@@ -184,7 +194,7 @@ client.on('channelUpdate', (oldChannel, newChannel) => {
 	}
 });
 
-client.on('voiceStateUpdate', (oldMember, newMember) => {
+client.on("voiceStateUpdate", (oldMember, newMember) => {
 	var guild = newMember.guild;
 	var guildConfig = getConfig(guild.id);
 	if (guildConfig.enable) {
@@ -218,10 +228,16 @@ client.on('voiceStateUpdate', (oldMember, newMember) => {
 										if (memberName != newOwner.user.username) {
 											if (checkPerm(guild, "MANAGE_CHANNELS")) {
 												channel.edit({
-													name: guildConfig.channelPrefix + " " + newOwner.user.username
+													name:
+														guildConfig.channelPrefix +
+														" " +
+														newOwner.user.username
 												});
 											}
-											if (guildConfig.givePermissions || guildConfig.giveChannelPermissions) {
+											if (
+												guildConfig.givePermissions ||
+												guildConfig.giveChannelPermissions
+											) {
 												if (checkPerm(guild, "MANAGE_ROLES")) {
 													oMP = {};
 													nMP = {};
@@ -237,10 +253,20 @@ client.on('voiceStateUpdate', (oldMember, newMember) => {
 														oMP["MANAGE_CHANNELS"] = false;
 														nMP["MANAGE_CHANNELS"] = true;
 													}
-													channel.overwritePermissions(oldMember, oMP)
-														.then(console.log("Changed permissions for a old member."));
-													channel.overwritePermissions(newOwner, nMP)
-														.then(console.log("Changed permissions for a new member."));
+													channel
+														.overwritePermissions(oldMember, oMP)
+														.then(
+															console.log(
+																"Changed permissions for a old member."
+															)
+														);
+													channel
+														.overwritePermissions(newOwner, nMP)
+														.then(
+															console.log(
+																"Changed permissions for a new member."
+															)
+														);
 												}
 											}
 											channelChange = false;
@@ -268,14 +294,17 @@ client.on('voiceStateUpdate', (oldMember, newMember) => {
 			var guildConfig = getConfig(guild.id);
 			if (newMember.voiceChannel.name == guildConfig.mainChannel) {
 				if (checkPerm(guild, "MANAGE_CHANNELS")) {
-					guild.createChannel(guildConfig.channelPrefix + " " + newMember.user.username, "voice");
+					guild.createChannel(
+						guildConfig.channelPrefix + " " + newMember.user.username,
+						"voice"
+					);
 				}
 			}
 		}
 	}
-})
+});
 
-client.on('channelCreate', (channel) => {
+client.on("channelCreate", channel => {
 	var guild = channel.guild;
 	var guildConfig = getConfig(guild.id);
 	if (guildConfig.enable) {
@@ -316,7 +345,10 @@ client.on('channelCreate', (channel) => {
 								userLimit: guildConfig.userLimit
 							});
 						}
-						if (guildConfig.givePermissions || guildConfig.giveChannelPermissions) {
+						if (
+							guildConfig.givePermissions ||
+							guildConfig.giveChannelPermissions
+						) {
 							if (checkPerm(guild, "MANAGE_ROLES")) {
 								p = {};
 								p["MUTE_MEMBERS"] = guildConfig.givePermissions;
@@ -331,9 +363,9 @@ client.on('channelCreate', (channel) => {
 			}
 		}
 	}
-})
+});
 
-client.on('message', (message) => {
+client.on("message", message => {
 	var content = message.content;
 	if (message.author.bot == false && content.indexOf(botPrefix) != -1) {
 		if (message.channel.type == "text") {
@@ -358,63 +390,80 @@ client.on('message', (message) => {
 			}
 			if (hasRights == true) {
 				var cmd = String(content).split(" ")[0];
-				var newValue = String(content).replace(cmd + " ", "").replace(cmd + "", "");
+				var newValue = String(content)
+					.replace(cmd + " ", "")
+					.replace(cmd + "", "");
 				var changeValid = false;
 				switch (cmd) {
 					case "help":
 						var helpObj = {
-							"help": {
-								"parameter": "none",
-								"desc": "Shows this help message."
+							help: {
+								parameter: "none",
+								desc: "Shows this help message."
 							},
-							"showSettings": {
-								"parameter": "none",
-								"desc": "Displays the current settings and their values."
+							showSettings: {
+								parameter: "none",
+								desc: "Displays the current settings and their values."
 							},
-							"enable": {
-								"parameter": "true/false",
-								"desc": "This command can enable and disable the bot."
+							enable: {
+								parameter: "true/false",
+								desc: "This command can enable and disable the bot."
 							},
-							"mainChannel": {
-								"parameter": "text",
-								"desc": "Specifies the channel which triggers the bot."
+							mainChannel: {
+								parameter: "text",
+								desc: "Specifies the channel which triggers the bot."
 							},
-							"category": {
-								"parameter": "text/false",
-								"desc": "Specifies the category within the temporary channel are created. Use 'false' for no category."
+							category: {
+								parameter: "text/false",
+								desc:
+									"Specifies the category within the temporary channel are created. Use 'false' for no category."
 							},
-							"userLimit": {
-								"parameter": "number",
-								"desc": "Specifies the user limit the temporary channel should have. Use '0' for unlimited."
+							userLimit: {
+								parameter: "number",
+								desc:
+									"Specifies the user limit the temporary channel should have. Use '0' for unlimited."
 							},
-							"channelPrefix": {
-								"parameter": "text",
-								"desc": "Specifies the prefix of the temporary channels."
+							channelPrefix: {
+								parameter: "text",
+								desc: "Specifies the prefix of the temporary channels."
 							},
-							"givePermissions": {
-								"parameter": "true/false",
-								"desc": "Specifies whether the channel 'creator' should get mute and deaf rights for that channel or not."
+							givePermissions: {
+								parameter: "true/false",
+								desc:
+									"Specifies whether the channel 'creator' should get mute and deaf rights for that channel or not."
 							},
-							"giveChannelPermissions": {
-								"parameter": "true/false",
-								"desc": "Specifies whether the channel 'creator' should get the permissions to change the channel itself or not."
+							giveChannelPermissions: {
+								parameter: "true/false",
+								desc:
+									"Specifies whether the channel 'creator' should get the permissions to change the channel itself or not."
 							},
-							"configRole": {
-								"parameter": "text/false",
-								"desc": "Specifies the role the bot listens to. 'false' = owner only."
+							configRole: {
+								parameter: "text/false",
+								desc:
+									"Specifies the role the bot listens to. 'false' = owner only."
 							},
-							"userRoles": {
-								"parameter": "text",
-								"desc": "Specify a list of roles who can actually see the temporary channels. If a given role is already present in the list it will be removed from it. Can be comma-seperated: 'Admins, Moderators, Users'."
+							userRoles: {
+								parameter: "text",
+								desc:
+									"Specify a list of roles who can actually see the temporary channels. If a given role is already present in the list it will be removed from it. Can be comma-seperated: 'Admins, Moderators, Users'."
 							}
-						}
+						};
 						var reply = "help is on the way:\n";
 						reply += "Make sure to use **" + botPrefix + "** as prefix!\n";
-						reply += "The format is: **COMMAND** __PARAMETER__ - *DESCRIPTION*.\n\n";
+						reply +=
+							"The format is: **COMMAND** __PARAMETER__ - *DESCRIPTION*.\n\n";
 						for (var key in helpObj) {
-							reply += "**" + key + "** __" + helpObj[key].parameter + "__ - *" + helpObj[key].desc + "*\n";
+							reply +=
+								"**" +
+								key +
+								"** __" +
+								helpObj[key].parameter +
+								"__ - *" +
+								helpObj[key].desc +
+								"*\n";
 						}
-						reply += "\nINFO: If you encounter any issues or have questions, feel free to contact me.\n";
+						reply +=
+							"\nINFO: If you encounter any issues or have questions, feel free to contact me.\n";
 						message.reply(reply);
 						break;
 					case "showSettings":
@@ -440,9 +489,13 @@ client.on('message', (message) => {
 						break;
 					case "mainChannel":
 						if (newValue == guildConfig.channelPrefix) {
-							message.reply("**mainChannel** must not be the same as **channelPrefix**.");
+							message.reply(
+								"**mainChannel** must not be the same as **channelPrefix**."
+							);
 						} else if (newValue[0] == guildConfig.channelPrefix[0]) {
-							message.reply("**mainChannel** must not start with the same character as **channelPrefix**.");
+							message.reply(
+								"**mainChannel** must not start with the same character as **channelPrefix**."
+							);
 						} else {
 							changeValid = true;
 						}
@@ -464,9 +517,13 @@ client.on('message', (message) => {
 						if (newValue.length < 1) {
 							message.reply("you need to specify at least one character.");
 						} else if (newValue == guildConfig.mainChannel) {
-							message.reply("**channelPrefix** must not be the same as **mainChannel**.");
+							message.reply(
+								"**channelPrefix** must not be the same as **mainChannel**."
+							);
 						} else if (newValue[0] == guildConfig.mainChannel[0]) {
-							message.reply("**channelPrefix** must not start with the same character as **mainChannel**.");
+							message.reply(
+								"**channelPrefix** must not start with the same character as **mainChannel**."
+							);
 						} else {
 							changeValid = true;
 						}
@@ -491,7 +548,11 @@ client.on('message', (message) => {
 						} else {
 							var role = message.guild.roles.find("name", newValue);
 							if (role == null) {
-								message.reply("you need to specifiy an existing role. Please add the role **" + newValue + "** and try again.");
+								message.reply(
+									"you need to specifiy an existing role. Please add the role **" +
+										newValue +
+										"** and try again."
+								);
 							} else {
 								changeValid = true;
 							}
@@ -499,10 +560,10 @@ client.on('message', (message) => {
 						break;
 					case "userRoles":
 						if (newValue.length > 0 && newValue[0] != ",") {
-							var newValues = newValue.split(',');
+							var newValues = newValue.split(",");
 							for (let i = 0; i < newValues.length; i++) {
 								let nv = newValues[i];
-								if (nv.length > 0 && nv != '"' && nv != "'" && nv != ',') {
+								if (nv.length > 0 && nv != '"' && nv != "'" && nv != ",") {
 									// nv = secureName(nv);
 									// nv = nv.toLowerCase();
 									if (nv[0] == " ") {
@@ -517,7 +578,9 @@ client.on('message', (message) => {
 										changeValid = true;
 										guildConfig.userRoles.push(nv);
 									} else {
-										message.reply(`could not add **${nv}** to the list since it's not a existing role.`);
+										message.reply(
+											`could not add **${nv}** to the list since it's not a existing role.`
+										);
 									}
 								}
 							}
@@ -534,19 +597,23 @@ client.on('message', (message) => {
 							newValue = "None";
 						}
 					}
-					message.reply("**" + cmd + "** *has been changed to* **" + newValue + "**.");
+					message.reply(
+						"**" + cmd + "** *has been changed to* **" + newValue + "**."
+					);
 				}
 			} else {
-				message.reply("sorry but you seem to lack on rights to use me.")
+				message.reply("sorry but you seem to lack on rights to use me.");
 			}
 		} else {
-			message.reply("sorry, but I am supposed to be controlled via a text channel on a discord server.");
+			message.reply(
+				"sorry, but I am supposed to be controlled via a text channel on a discord server."
+			);
 		}
 	}
 });
 
-process.on('unhandledRejection', (err) => {
+process.on("unhandledRejection", err => {
 	console.error(err);
-})
+});
 
 client.login(token.token);

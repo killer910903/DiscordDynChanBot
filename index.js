@@ -1,7 +1,8 @@
 /* jshint esversion: 6 */
-// process.chdir('/home/zlyfer/DiscordBots/DiscordDynChanBot');
+// process.chdir("/home/zlyfer/DiscordBots/DiscordDynChanBot");
 const Discord = require("discord.js");
 const client = new Discord.Client();
+const shortid = require("shortid");
 
 const botPrefix = "~zltz~";
 const token = require("./token.json");
@@ -219,6 +220,7 @@ function delConfig(message, args) {
 		);
 }
 function changeConfig(message, args = null) {
+	// IDEA: Make every action be skipable when a valid value is already set.
 	let guild = message.guild;
 	let dcg = DynChanGuilds[guild.id];
 	let valid = false;
@@ -330,7 +332,7 @@ function changeConfig(message, args = null) {
 					message.reply(reply);
 					break;
 				case "createTextChannel":
-					args = args[0];
+					args = args.join("");
 					val = false;
 					if (args.toLowerCase() == "yes") {
 						val = true;
@@ -401,7 +403,7 @@ function changeConfig(message, args = null) {
 					}
 					dcg.saveData();
 					reply += `Now please send me the **suffix** of the name of the new **${detail}** channels.\n`;
-					reply += "Example: **[Gaming]**\n";
+					reply += "Example: **[Friends]**\n";
 					reply += `Info: *You can also use **No** if you do not want the ${detail} channels to have a suffix in the name.*`;
 					dcg.setup.state = "suffix";
 					message.reply(reply);
@@ -420,11 +422,14 @@ function changeConfig(message, args = null) {
 					dcg.saveData();
 					reply += `Now please tell me what kind of name the **${detail}** channels should have.\n`;
 					reply += "This are the available options:\n";
-					reply += "**1**: Unique random ID.\n";
-					reply += "**2**: Incrementing number.\n";
-					reply += "**3**: Username of the owner.\n";
-					reply += "**4**: Nickname of the owner.\n";
-					reply += "**Text**: Custom name.\n";
+					reply += `**1**: Unique random ID. Example: *${shortid.generate()}*\n`;
+					reply += `**2**: Incrementing number. Example: *1*\n`;
+					reply += `**3**: Username of the owner. Example: *${
+						message.author.username
+					}*\n`;
+					reply += `**4**: Nickname of the owner. Example: *${message.member
+						.nickname || `awesome ${message.author.username}`}*\n`;
+					reply += "**Text**: Custom name. Example: *Friends*\n";
 					reply += "Example: **Dynamic Channel**\n";
 					reply += "Info: *Answer with either 1-4 or with a custom text.*";
 					dcg.setup.state = "channelname";
@@ -456,24 +461,118 @@ function changeConfig(message, args = null) {
 						reply += "Example: **4**\n";
 						reply += "Info: *If you want to disable the userlimit use **0**.*";
 						dcg.setup.state = "userlimit";
-					} else {
-						// TODO: Text for nsfw.
+					} else if (detail == "text") {
+						reply +=
+							"Now please tell me if the text channels should be flagged **NSFW** (Not Safe For Work).\n";
+						reply += "Please answer with either **Yes** or **No**.\n";
+						reply += "Example: **Yes**\n";
+						reply +=
+							"Info *If a text channel is flagged with NSFW users who enter the channel the first time will be prompted to continue joining or leave.*";
 						dcg.setup.state = "nsfw";
 					}
 					message.reply(reply);
 					break;
 				case "userlimit":
-					// TODO: ~
+					args = args.join("");
+					n = parseInt(args);
+					if (!isNaN(n)) {
+						if (n >= 0 && n <= 99) {
+							dcg.getConfiguration(dcg.setup.configID).voice.userlimit = n;
+							dcg.saveData();
+							if (n == 0)
+								reply = "okay the voice channels will not be user-limited.\n";
+							else
+								reply = `okay the voice channels will be limited by ${n} user${
+									n == 1 ? "" : "s"
+								}.\n`;
+							reply +=
+								"Now please tell me what bitrate the voice channels should have.\n";
+							reply +=
+								"By default Discord voice channels have a bitrate of 64kbps (or 640000bps) but it can be increased to 96kbps.\n";
+							reply += "You can choose a number between 8 and 96.\n";
+							reply += "Example: **70**\n";
+							reply +=
+								"Info: *The bitrate of a voice channel defines the sound quality the higher the sound, the better the quality. If you are unsure about the bitrate just send me **64** which is the default.*";
+							message.reply(reply);
+							dcg.setup.state = "bitrate";
+						} else
+							message.reply(
+								`sorry **${args}** seems to be out of range. Please send me a number between **0-99**.`
+							);
+					} else
+						message.reply(
+							`sorry **${args}** does not seem to be a number. Please send me a number from **0-99**.`
+						);
 					break;
 				case "bitrate":
-					// TODO: Set dcg.setup.detail to text and -state to category only if createTextChannel is true - otherwise set -state to null.
+					args = args.join("");
+					n = parseInt(args);
+					if (!isNaN(n)) {
+						if (n >= 8 && n <= 96) {
+							dcg.getConfiguration(dcg.setup.configID).voice.bitrate = n * 1000;
+							dcg.saveData();
+							reply = `okay the bitrate will be **${n}kbps**.\n`;
+							if (dcg.getConfiguration(dcg.setup.configID).createTextChannel) {
+								dcg.setup.state = "category";
+								dcg.setup.detail = "text";
+								reply += `Now please provide the id of a **category** in which the **${
+									dcg.setup.detail
+								}** channels should be created.\n`;
+								reply += "Example: **547746501590253583**\n";
+								reply += `Info: *You can also use **No** if you do not want the **${
+									dcg.setup.detail
+								}** channels to be placed in a category.*`;
+							} else {
+								reply += "Now let's talk about **permissions**:\n";
+								// TODO: Implement permissions.
+								dcg.setup.state = "finish"; //"permissions";
+							}
+							message.reply(reply);
+						} else
+							message.reply(
+								`sorry **${args}** seems to be out of range. Please send me a number between **8-96**.`
+							);
+					} else
+						message.reply(
+							`sorry **${args}** does not seem to be a number. Please send me a number from **8-96**.`
+						);
 					break;
 				case "nsfw":
-					// TODO: ~
+					args = args.join("");
+					val = false;
+					if (args.toLowerCase() == "yes") {
+						val = true;
+					} else if (args.toLowerCase() == "no") {
+						val = false;
+					}
+					if (args.toLowerCase() == "yes" || args.toLowerCase() == "no") {
+						dcg.getConfiguration(dcg.setup.configID).text.nsfw = val;
+						dcg.saveData();
+						reply = `okay text channels **will ${
+							val ? "" : "not"
+						}** be NSFW.\n`;
+						reply += "Now let's talk about **permissions**:\n";
+						// TODO: Implement permissions.
+						dcg.setup.state = "finish"; //"permissions";
+						message.reply(reply);
+					} else
+						message.reply(
+							"sorry you need to answer with either **Yes** or **No**."
+						);
 					break;
 				case "permissions":
-					// TODO: ~
-					// TODO: Set dcg.setup.state to null.
+					// TODO: Implement permissions.
+					// dcg.setup.state = "finish";
+					break;
+				case "finish":
+					reply = "\n\n"; // TODO: Implement permissions.
+					reply += `Congratulations! The setup of ${
+						dcg.setup.configName
+					} is done!\n`;
+					reply += `You can use **${botPrefix} showConfig** to verify your changes.`;
+					dcg.saveData(); // Better safe than sorry.
+					message.reply(reply);
+					dcg.setup.reset();
 					break;
 				default:
 					reply = "okay let us begin with the name of the configuration.\n";
@@ -483,7 +582,7 @@ function changeConfig(message, args = null) {
 						"Info: *The purpose of the name is for you to recognize the configuration.*";
 					message.reply(reply);
 					dcg.setup.state = "name";
-					dcg.setup.state = "createTextChannel";
+					// dcg.setup.state = "channelname";
 					break;
 			}
 		else
@@ -507,11 +606,7 @@ function cancelSetup(message, args) {
 			"sorry there didn't seem to be a running setup. I canceled everything anyways, just to be sure."
 		);
 	}
-	dcg.setup.configID = null;
-	dcg.setup.configName = null;
-	dcg.setup.state = null;
-	dcg.setup.user = null;
-	dcg.setup.detail = "voice";
+	dcg.setup.reset();
 }
 function controlRoles(message, args) {
 	let guild = message.guild;
@@ -554,56 +649,48 @@ function showConfig(message, args) {
 			let reply = "\n";
 			reply += `name: **${c.name}**\n`;
 			reply += `id: **${c.id}**\n`;
-			reply += `triggerChannel: **${c.triggerChannel}**\n`;
+			t = guild.channels.find(ch => ch.id == c.triggerChannel);
+			reply += `triggerChannel: **${c.triggerChannel}** (**${
+				t ? t.name : "not found"
+			}**)\n`;
 			reply += `triggerRoles:\n`;
 			c.triggerRoles.forEach(r => {
-				reply += `	${r}\n`;
+				t = guild.roles.find(ro => ro.id == r);
+				reply += `	**${r}** (**${t ? t.name : "not found"}**)\n`;
 			});
-			reply += `preventNameChange: **${c.preventNameChange}**\n`;
 			reply += `createTextChannel: **${c.createTextChannel}**\n`;
 			reply += `voice:\n`;
 			reply += `	category: **${c.voice.category}**\n`;
 			reply += `	prefix: **${c.voice.prefix}**\n`;
 			reply += `	suffix: **${c.voice.suffix}**\n`;
-			reply += `	name: **${c.voice.name}**\n`;
-			reply += `	permissions:\n`;
-			c.voice.permissions.forEach(p => {
-				reply += `		roles:\n`;
-				p.roles.forEach(e => {
-					reply += `			**${e}**\n`;
-				});
-				reply += `		allow:\n`;
-				p.allow.forEach(e => {
-					reply += `			**${e}**\n`;
-				});
-				reply += `		deny:\n`;
-				p.deny.forEach(e => {
-					reply += `			**${e}**\n`;
-				});
-			});
+			reply += `	name: **${
+				c.voice.name
+			}** (*1: ID, 2: Number, 3: Username, 4: Nickname, Text: Custom*)\n`;
 			reply += `	userlimit: **${c.voice.userlimit}**\n`;
 			reply += `	bitrate: **${c.voice.bitrate}**\n`;
 			reply += `text:\n`;
 			reply += `	category: **${c.text.category}**\n`;
 			reply += `	prefix: **${c.text.prefix}**\n`;
 			reply += `	suffix: **${c.text.suffix}**\n`;
-			reply += `	name: **${c.text.name}**\n`;
-			reply += `	permissions:\n`;
-			c.text.permissions.forEach(p => {
-				reply += `		roles:\n`;
-				p.roles.forEach(e => {
-					reply += `			**${e}**\n`;
-				});
-				reply += `		allow:\n`;
-				p.allow.forEach(e => {
-					reply += `			**${e}**\n`;
-				});
-				reply += `		deny:\n`;
-				p.deny.forEach(e => {
-					reply += `			**${e}**\n`;
-				});
-			});
-			reply += `	nsfw: **${c.text.nsfw}**`;
+			reply += `	name: **${
+				c.text.name
+			}** (*1: ID, 2: Number, 3: Username, 4: Nickname, Text: Custom*)\n`;
+			reply += `	nsfw: **${c.text.nsfw}**\n`;
+			// reply += `permissions:\n`; // TODO: Implement permissions.
+			// c.permissions.forEach(p => {
+			// 	reply += `		roles:\n`;
+			// 	p.roles.forEach(e => {
+			// 		reply += `			**${e}**\n`;
+			// 	});
+			// 	reply += `		allow:\n`;
+			// 	p.allow.forEach(e => {
+			// 		reply += `			**${e}**\n`;
+			// 	});
+			// 	reply += `		deny:\n`;
+			// 	p.deny.forEach(e => {
+			// 		reply += `			**${e}**\n`;
+			// 	});
+			// });
 			message.reply(reply);
 		});
 	} else
