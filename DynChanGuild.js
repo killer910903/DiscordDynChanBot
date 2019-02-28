@@ -8,18 +8,16 @@ class DynChanGuild {
 	constructor(id) {
 		this.id = id;
 		this.setup = {
-			configID: null,
-			configName: null,
+			id: null,
 			state: null,
 			user: null,
 			detail: "voice",
 			reset: function() {
-				this.setup.state = "null";
-				this.setup.configID = null;
-				this.setup.configName = null;
-				this.setup.state = null;
-				this.setup.user = null;
-				this.setup.detail = "voice";
+				this.state = "null";
+				this.id = null;
+				this.state = null;
+				this.user = null;
+				this.detail = "voice";
 			}
 		};
 		this.data = this.loadData();
@@ -96,7 +94,7 @@ class DynChanGuild {
 	hasTriggerRole(id) {
 		if (
 			this.data.configurations
-				.find(c => c.id == this.setup.configID)
+				.find(c => c.id == this.setup.id)
 				.triggerRoles.find(r => r.id == id)
 		)
 			return true;
@@ -104,7 +102,7 @@ class DynChanGuild {
 	}
 	toggleTriggerRole(id) {
 		let toggle = true;
-		let c = this.data.configurations.find(c => c.id == this.setup.configID);
+		let c = this.data.configurations.find(c => c.id == this.setup.id);
 		if (c.triggerRoles.includes(id)) {
 			toggle = false;
 			let index = c.triggerRoles.indexOf(id);
@@ -112,21 +110,27 @@ class DynChanGuild {
 		} else {
 			toggle = true;
 			this.data.configurations
-				.find(c => c.id == this.setup.configID)
+				.find(c => c.id == this.setup.id)
 				.triggerRoles.push(id);
 		}
 		this.saveData();
 		return toggle;
 	}
-	// changeBool(id, key, val) {
-	// 	let c = this.data.configurations.find(c => c.id == id);
-	// 	if (c) c[key] = val;
-	// 	this.saveData();
-	// }
-	// setVoiceCategory(id, val) {
-	// 	let c = this.data.configurations.find(c => c.id == id);
-	// 	if (c) c.voice.category = val;
-	// 	this.saveData();
-	// }
+	togglePermission(permission) {
+		let toggle = true;
+		let c = this.data.configurations.find(c => c.id == this.setup.id);
+		if (c.permissions.includes(permission)) {
+			toggle = false;
+			let index = c.permissions.indexOf(permission);
+			c.permissions.splice(index, 1);
+		} else {
+			toggle = true;
+			this.data.configurations
+				.find(c => c.id == this.setup.id)
+				.permissions.push(permission);
+		}
+		this.saveData();
+		return toggle;
+	}
 }
 module.exports = DynChanGuild;
