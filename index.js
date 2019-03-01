@@ -863,9 +863,13 @@ function showConfig(message, args) {
 		let count = 0;
 		DynChanGuilds[guild.id].data.configurations.forEach(c => {
 			count++;
-			let unset = checkConfig(guild, c);
+			let unset = checkConfig(guild, DynChanGuilds[guild.id], c);
 			let tunset = false;
-			if (unset) {
+			let uvalid = true;
+			for (let key in unset) {
+				if (unset[key] != null) uvalid = false;
+			}
+			if (!uvalid) {
 				tunset =
 					"**WARNING**: This configuration is **incomplete** and will **not** be used!\n";
 				tunset +=
@@ -894,7 +898,7 @@ function showConfig(message, args) {
 			t = guild.channels.find(ch => ch.id == c.triggerChannel);
 			rfields.push({
 				name: "**triggerChannel**",
-				value: `**${t ? t.name : "Not found"}** (*${c.triggerChannel}*)`
+				value: `**${t ? t.name : "Not found"}** (${c.triggerChannel})`
 			});
 			rfields.push({
 				name: "**triggerRoles**",
@@ -976,6 +980,14 @@ function showConfig(message, args) {
 				name: "**nsfw**",
 				value: `*${c.text.nsfw ? "Yes" : "No"}*`,
 				inline: true
+			});
+			let pl = "";
+			c.permissions.forEach(p => {
+				pl += `**${p}**\n`;
+			});
+			rfields.push({
+				name: "**permissions**",
+				value: pl
 			});
 
 			let ereply = {
@@ -1124,7 +1136,7 @@ function translateHex(val) {
 	return val;
 }
 
-function checkConfig(guild, dcgConfig) {
+function checkConfig(guild, dcg, dcgConfig) {
 	let unset = {
 		triggerChannel: null,
 		triggerRoles: null,
@@ -1153,7 +1165,10 @@ function checkConfig(guild, dcgConfig) {
 			let ro = guild.roles.find(ro => ro.id == r);
 			if (ro) tvalid = true;
 		});
-		if (!tvalid) unset.triggerRoles = "Not a single role could be found.";
+		if (!tvalid) {
+			valid = false;
+			unset.triggerRoles = "Not a single role could be found.";
+		}
 	} else {
 		valid = false;
 		unset.triggerRoles = "Must include at least one valid role id.";
@@ -1188,6 +1203,8 @@ function checkConfig(guild, dcgConfig) {
 		valid = false;
 		unset["text - category"] = "Must be an channel id.";
 	}
+	dcgConfig.valid = valid;
+	dcg.saveData();
 	if (!valid) return unset;
 	else return false;
 }
