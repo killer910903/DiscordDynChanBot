@@ -24,7 +24,8 @@ class DynChanConfiguration {
 			prefix: null,
 			suffix: null,
 			name: 3, // 1: ID, 2: Number, 3: Username, 4: Nickname, Text: Custom
-			nsfw: false
+			nsfw: false,
+			topic: "Created by DynChanBot!"
 		};
 		this.permissions = [];
 	}

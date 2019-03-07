@@ -20,8 +20,10 @@ class DynChanGuild {
 				this.detail = "voice";
 			}
 		};
-		this.data = this.loadData();
-		this.saveData();
+		this.data = {};
+		this.channels = {};
+		this.loadData();
+		this.init();
 	}
 
 	loadData() {
@@ -36,11 +38,16 @@ class DynChanGuild {
 				error
 			);
 		}
-		return data;
+		this.data = data;
 	}
 	saveData() {
 		let file = `${guildConfigFolder}/${this.id}.json`;
 		fs.writeFileSync(file, JSON.stringify(this.data), "utf-8");
+	}
+	init() {
+		this.data.configurations.forEach(c => {
+			this.channels[c.id] = [];
+		});
 	}
 
 	toggle(state = null) {
