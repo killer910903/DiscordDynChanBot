@@ -146,7 +146,7 @@ client.on("ready", () => {
 client.on("guildCreate", guild => {
 	DynChanGuilds[guild.id] = new DynChanGuild(guild.id);
 	DynChanGuilds[guild.id].saveData();
-	// IDEA: Welcome message to creator & info/help?
+	// TODO: Welcome message to creator & info/help?
 });
 
 // client.on("channelUpdate", (oldChannel, newChannel) => {});
@@ -162,40 +162,53 @@ client.on("voiceStateUpdate", (oldMember, newMember) => {
 		if (configuration) {
 			if (configuration.valid && configuration.active) {
 				if (newMember.roles.find(r => configuration.triggerRoles.includes(r.id))) {
-					let cname = genName(dcg, configuration.voice, newMember);
-					// TODO: Create permissions for voice channel!
-					guild.createChannel(cname, "voice").then(voicechannel => {
-						let dcc = new DynChanChannel(guild.id, voicechannel.id, configuration.id);
-						dcg.channels[configuration.id].push(dcc);
-						voicechannel
-							.edit({
-								parent: configuration.voice.category,
-								userLimit: configuration.voice.userlimit,
-								bitrate: configuration.voice.bitrate
-							})
-							.then(voicechannel => {
-								newMember.edit({ channel: voicechannel });
-							});
-						if (configuration.createTextChannel) {
-							cname = genName(dcg, configuration.text, newMember);
-							// TODO: Create permissions for text channel!
-							guild.createChannel(cname, "text").then(textchannel => {
-								dcc.textChannel = textchannel.id;
-								textchannel.edit({
-									topic: configuration.text.topic ? configuration.text.topic : "",
-									parent: configuration.text.category,
-									nsfw: configuration.text.nsfw
+					let dcc = new DynChanChannel(configuration.id);
+					dcg.channels[configuration.id].push(dcc);
+					let cname = genName(dcg, configuration.voice, configuration.id, newMember);
+					guild
+						.createChannel(cname, "voice", [
+							{
+								id: newMember.user.id,
+								allowed: configuration.permissions
+							}
+						])
+						.then(voicechannel => {
+							dcc.voiceChannel = voicechannel.id;
+							voicechannel
+								.edit({
+									parent: configuration.voice.category,
+									userLimit: configuration.voice.userlimit,
+									bitrate: configuration.voice.bitrate
+								})
+								.then(voicechannel => {
+									newMember.edit({ channel: voicechannel });
 								});
-							});
-						}
-					});
+							if (configuration.createTextChannel) {
+								cname = genName(dcg, configuration.text, configuration.id, newMember);
+								guild
+									.createChannel(cname, "text", [
+										{
+											id: newMember.user.id,
+											allowed: configuration.permissions
+										}
+									])
+									.then(textchannel => {
+										dcc.textChannel = textchannel.id;
+										textchannel.edit({
+											topic: configuration.text.topic ? configuration.text.topic : "",
+											parent: configuration.text.category,
+											nsfw: configuration.text.nsfw
+										});
+									});
+							}
+						});
 				}
 			}
 		} else {
 			let guild = oldMember.guild;
 			let dcg = DynChanGuilds[guild.id];
 			let configurationID = Object.keys(dcg.channels).find(cID =>
-				dcg.channels[cID].find(dcc => dcc.channel == oldMember.voiceChannelID)
+				dcg.channels[cID].find(dcc => dcc.voiceChannel == oldMember.voiceChannelID)
 			);
 			if (configurationID) {
 				let configuration = dcg.data.configurations.find(
@@ -205,7 +218,7 @@ client.on("voiceStateUpdate", (oldMember, newMember) => {
 					let textchannel = null;
 					if (configuration.createTextChannel) {
 						let textchannelID = dcg.channels[configurationID].find(
-							c => c.channel == oldMember.voiceChannelID
+							c => c.voiceChannel == oldMember.voiceChannelID
 						).textChannel;
 						textchannel = guild.channels.find(c => c.id == textchannelID);
 					}
@@ -214,18 +227,43 @@ client.on("voiceStateUpdate", (oldMember, newMember) => {
 					);
 					if (member) {
 						if (textchannel)
-							// TODO: Change permissions for text channel.
-							textchannel.edit({ name: genName(dcg, configuration.text, member) });
-						// TODO: Change permissions for voice channel.
+							textchannel.replacePermissionOverwrites({
+								overwrites: [
+									{
+										id: oldMember.user.id,
+										allowed: []
+									},
+									{
+										id: member.user.id,
+										allowed: configuration.permissions
+									}
+								]
+							});
+						textchannel.edit({
+							name: genName(dcg, configuration.text, configuration.id, member)
+						});
+						oldMember.voiceChannel.replacePermissionOverwrites({
+							overwrites: [
+								{
+									id: oldMember.user.id,
+									allowed: []
+								},
+								{
+									id: member.user.id,
+									allowed: configuration.permissions
+								}
+							]
+						});
 						oldMember.voiceChannel.edit({
-							name: genName(dcg, configuration.voice, member)
+							name: genName(dcg, configuration.voice, configuration.id, member)
 						});
 					} else {
 						if (textchannel) textchannel.delete();
 						oldMember.voiceChannel.delete().then(r => {
-							let index = dcg.channels[configuration.id].indexOf(
-								oldMember.voiceChannelID
+							let t = dcg.channels[configuration.id].find(
+								c => c.voiceChannel == oldMember.voiceChannelID
 							);
+							let index = dcg.channels[configuration.id].indexOf(t);
 							dcg.channels[configuration.id].splice(index, 1);
 						});
 					}
@@ -244,6 +282,7 @@ client.on("message", message => {
 			let args = messageContent[2] || undefined;
 			let guild = message.guild;
 			let dcg = DynChanGuilds[guild.id];
+			console.log(dcg);
 			if (dcg) {
 				if (
 					botPrefix == prefix ||
@@ -362,7 +401,7 @@ function toggleConfig(message, args) {
 }
 
 function changeConfig(message, args = null) {
-	// TODO: Make every action be skipable when a valid value is already set.
+	// IDEA: Make every action be skipable when a valid value is already set.
 	let guild = message.guild;
 	let dcg = DynChanGuilds[guild.id];
 	let valid = false;
@@ -390,9 +429,12 @@ function changeConfig(message, args = null) {
 					args = args.join(" ");
 					reply = `okay the new name will be **${args}**.\n\n`;
 					reply += "Now please provide me the id of a voice channel.\n";
-					reply += `Current value: **${
+					t = guild.channels.find(
+						c => c.id == dcg.getConfiguration(dcg.setup.id).triggerChannel
+					);
+					reply += `Current value: **${t ? t.name : "not found"}** (**${
 						dcg.getConfiguration(dcg.setup.id).triggerChannel
-					}**\n`;
+					}**)\n`;
 					reply += "Example: **422801241983418368**\n";
 					reply +=
 						"Info: *This voice channel will be used as 'triggerChannel' people need to join in order to create their own dynamic channel(s).*";
@@ -405,7 +447,7 @@ function changeConfig(message, args = null) {
 					args = args[0];
 					ec = dcg.data.configurations.find(c => c.triggerChannel == args);
 					c = guild.channels.find(c => c.id == args);
-					if (c && !ec) {
+					if (c && (!ec || ec.id == dcg.setup.id)) {
 						if (c.type === "voice") {
 							reply = `okay the triggerChannel will be **${c.name}**.\n`;
 							reply +=
@@ -497,7 +539,6 @@ function changeConfig(message, args = null) {
 						val = false;
 					}
 					if (args.toLowerCase() == "yes" || args.toLowerCase() == "no") {
-						// dcg.changeBool(dcg.setup.id, "createTextChannel", val);
 						dcg.getConfiguration(dcg.setup.id).createTextChannel = val;
 						dcg.saveData();
 						dcg.setup.state = "category";
@@ -738,6 +779,9 @@ function changeConfig(message, args = null) {
 						dcg.saveData();
 						reply = `okay text channels **will ${val ? "" : "not"}** be NSFW.\n`;
 						reply += "Now please tell me the topic of the text channels:\n";
+						reply += `Current value: **${
+							dcg.getConfiguration(dcg.setup.id).text.topic
+						}**\n`;
 						reply += "Example: **This is a temporary channel. Welcome!**.\n";
 						reply += "Info: *You can use **No** to skip this.*";
 						dcg.setup.state = "topic";
@@ -746,7 +790,7 @@ function changeConfig(message, args = null) {
 						message.reply("sorry you need to answer with either **Yes** or **No**.");
 					break;
 				case "topic":
-					args = args[0];
+					args = args.join(" ");
 					if (args.toLowerCase() == "no") args = false;
 					if (args) {
 						reply = `Okay the topic of the text channels will be **${args}**.\n`;
@@ -759,7 +803,9 @@ function changeConfig(message, args = null) {
 					reply +=
 						"Please tell me which permissions the creator of a channel should get.\n";
 					reply +=
-						"The permissions are then automatically applied to the voice and/or text channels.";
+						"The permissions are then automatically applied to the voice and/or text channels.\n";
+					reply += "Current value:\n";
+					reply += "--";
 					reply += "Example: **MUTE_MEMBERS**\n";
 					reply += `Info: *Use **${botPrefix} showPermissions** to view all available permissions.*\n`;
 					dcg.setup.state = "permissions";
@@ -1011,12 +1057,12 @@ function showConfig(message, args) {
 			});
 			rfields.push({
 				name: "**prefix**",
-				value: `*${c.voice.prefix ? c.text.prefix : "None"}*`,
+				value: `*${c.voice.prefix ? c.voice.prefix : "None"}*`,
 				inline: true
 			});
 			rfields.push({
 				name: "**suffix**",
-				value: `*${c.voice.suffix ? c.text.suffix : "None"}*`,
+				value: `*${c.voice.suffix ? c.voice.suffix : "None"}*`,
 				inline: true
 			});
 			rfields.push({
@@ -1240,7 +1286,7 @@ function hasRole(guild, member) {
 	return false;
 }
 
-function genName(dcg, vt, member) {
+function genName(dcg, vt, conID, member) {
 	let cp = vt.prefix ? vt.prefix : "";
 	let cs = vt.suffix ? vt.suffix : "";
 	let cn = "Unnamed";
@@ -1249,7 +1295,7 @@ function genName(dcg, vt, member) {
 			cn = shortid.generate();
 			break;
 		case 2:
-			cn = dcg.channels[configuration.id].length + 1;
+			cn = dcg.channels[conID].length;
 			break;
 		case 3:
 			cn = member.user.username;

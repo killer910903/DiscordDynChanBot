@@ -1,9 +1,8 @@
 /* jshint esversion: 6 */
 class DynChanChannel {
-	constructor(guild, channel, configuration) {
-		this.guild = guild;
-		this.channel = channel;
+	constructor(configuration) {
 		this.configuration = configuration;
+		this.voiceChannel = null;
 		this.textChannel = null;
 	}
 }
