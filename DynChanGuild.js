@@ -58,8 +58,8 @@ class DynChanGuild {
 		this.saveData();
 	}
 	setCustomPrefix(prefix) {
-		if (prefix) this.data.customPrefix = prefix;
-		else this.data.customPrefix = null;
+		if (prefix) this.data.customBotPrefix = prefix;
+		else this.data.customBotPrefix = null;
 		this.saveData();
 	}
 	newConfiguration() {

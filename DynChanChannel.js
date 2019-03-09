@@ -1,7 +1,7 @@
 /* jshint esversion: 6 */
 class DynChanChannel {
-	constructor(configuration) {
-		this.configuration = configuration;
+	constructor(owner) {
+		this.owner = owner;
 		this.voiceChannel = null;
 		this.textChannel = null;
 	}
