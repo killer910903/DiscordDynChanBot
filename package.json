@@ -6,6 +6,6 @@
   "author": "zlyfa!",
   "dependencies": {
     "discord.js": "11.4.2",
-    "shortid": "^2.2.14"
+    "short-unique-id": "^1.1.1"
   }
 }

@@ -1,14 +1,15 @@
 /* jshint esversion: 6 */
 // process.chdir("/home/zlyfer/DiscordBots/DiscordDynChanBot");
 // TODO: Check if the bot has permissions to perform an action, before attempting to!
-// TODO: text channels only visible to those who are in the voice channel
-// IDEA: @mention for role ident
-// IDEA: give owner to the next user who stayed the longest
-// IDEA: Delay before triggering
-// IDEA: Limit of creatable channels
+
+// TODO: number counting
+// TODO: roman number counting: https://www.npmjs.com/package/roman-numeral
+
+// TODO: Simple/Advanced Setup
 const Discord = require("discord.js");
 const client = new Discord.Client();
-const shortid = require("shortid");
+const ShortUniqueId = require("short-unique-id");
+var uid = new ShortUniqueId();
 
 var DynChanGuilds = {};
 const botPrefix = "~zltz~";
@@ -47,21 +48,21 @@ const commandList = [
 	{
 		command: "delConfig",
 		shortcut: "dc",
-		argument: "id",
+		argument: "configuration id",
 		description: "Delete a configuration.",
 		function: delConfig
 	},
 	{
 		command: "toggleConfig",
 		shortcut: "tc",
-		argument: "id",
+		argument: "configuration id",
 		description: "Toggle a configuration.",
 		function: toggleConfig
 	},
 	{
 		command: "changeConfig",
 		shortcut: "cc",
-		argument: "id",
+		argument: "configuration id",
 		description: "Change a configuration.",
 		function: changeConfig
 	},
@@ -75,7 +76,7 @@ const commandList = [
 	{
 		command: "controlRoles",
 		shortcut: "cr",
-		argument: "id",
+		argument: "id/role mention",
 		description: "Toggle role the bot listens to. Use the id of the role.",
 		function: controlRoles
 	},
@@ -155,7 +156,7 @@ client.on("guildCreate", guild => {
 });
 
 client.on("voiceStateUpdate", (oldMember, newMember) => {
-	// Delete/Modify dynChan upon leaving such.
+	// Delete/Modify DynChan upon leaving such.
 	if (oldMember.voiceChannelID) {
 		let guild = oldMember.guild;
 		let dcg = DynChanGuilds[guild.id];
@@ -182,22 +183,29 @@ client.on("voiceStateUpdate", (oldMember, newMember) => {
 						c => c.voiceChannel == oldMember.voiceChannelID
 					);
 					if (dcc) dcc.owner = member.user.id;
-					if (textchannel)
-						textchannel.replacePermissionOverwrites({
-							overwrites: [
-								{
-									id: oldMember.user.id,
-									allowed: []
-								},
-								{
-									id: member.user.id,
-									allowed: configuration.permissions
-								}
-							]
+					if (textchannel) {
+						if (configuration.isolate) {
+							let everyone = guild.roles.find(r => r.name == "@everyone");
+							if (everyone)
+								textchannel.overwritePermissions(everyone, {
+									VIEW_CHANNEL: false
+								});
+						}
+						let omp = {};
+						configuration.permissions.forEach(p => {
+							omp[p] = false;
 						});
-					textchannel.edit({
-						name: genName(dcg, configuration.text, configuration.id, member)
-					});
+						let mp = {};
+						configuration.permissions.forEach(p => {
+							mp[p] = true;
+						});
+						if (configuration.isolate) omp["VIEW_CHANNEL"] = false;
+						textchannel.overwritePermissions(oldMember.user, omp);
+						textchannel.overwritePermissions(member.user, mp);
+						textchannel.edit({
+							name: genName(dcg, configuration.text, configuration.id, member)
+						});
+					}
 					oldMember.voiceChannel.replacePermissionOverwrites({
 						overwrites: [
 							{
@@ -234,48 +242,95 @@ client.on("voiceStateUpdate", (oldMember, newMember) => {
 	);
 	if (dcg.data.toggle) {
 		if (configuration) {
-			if (configuration.valid && configuration.active) {
-				if (newMember.roles.find(r => configuration.triggerRoles.includes(r.id))) {
-					let dcc = new DynChanChannel(newMember.user.id);
-					dcg.channels[configuration.id].push(dcc);
-					let cname = genName(dcg, configuration.voice, configuration.id, newMember);
-					guild
-						.createChannel(cname, "voice", [
-							{
-								id: newMember.user.id,
-								allowed: configuration.permissions
-							}
-						])
-						.then(voicechannel => {
-							dcc.voiceChannel = voicechannel.id;
-							voicechannel
-								.edit({
-									parent: configuration.voice.category,
-									userLimit: configuration.voice.userlimit,
-									bitrate: configuration.voice.bitrate
-								})
-								.then(voicechannel => {
-									newMember.edit({ channel: voicechannel });
-								});
-							if (configuration.createTextChannel) {
-								cname = genName(dcg, configuration.text, configuration.id, newMember);
+			setTimeout(
+				function() {
+					if (configuration.valid && configuration.active) {
+						if (
+							newMember.roles.find(r => configuration.triggerRoles.includes(r.id))
+						) {
+							if (dcg.channels[configuration.id] < configuration.limit) {
+								let dcc = new DynChanChannel(newMember.user.id);
+								dcg.channels[configuration.id].push(dcc);
+								let cname = genName(
+									dcg,
+									configuration.voice,
+									configuration.id,
+									newMember
+								);
 								guild
-									.createChannel(cname, "text", [
+									.createChannel(cname, "voice", [
 										{
 											id: newMember.user.id,
 											allowed: configuration.permissions
 										}
 									])
-									.then(textchannel => {
-										dcc.textChannel = textchannel.id;
-										textchannel.edit({
-											topic: configuration.text.topic ? configuration.text.topic : "",
-											parent: configuration.text.category,
-											nsfw: configuration.text.nsfw
-										});
+									.then(voicechannel => {
+										dcc.voiceChannel = voicechannel.id;
+										voicechannel
+											.edit({
+												parent: configuration.voice.category,
+												userLimit: configuration.voice.userlimit,
+												bitrate: configuration.voice.bitrate
+											})
+											.then(voicechannel => {
+												newMember.edit({ channel: voicechannel });
+											});
+										if (configuration.createTextChannel) {
+											cname = genName(
+												dcg,
+												configuration.text,
+												configuration.id,
+												newMember
+											);
+											let overwrites = [];
+											if (configuration.isolate) {
+												let everyone = guild.roles.find(r => r.name == "@everyone");
+												if (everyone) {
+													overwrites.push({
+														id: everyone.id,
+														denied: ["VIEW_CHANNEL"]
+													});
+												}
+											}
+											overwrites.push({
+												id: newMember.user.id,
+												allowed: configuration.permissions
+											});
+											if (configuration.isolate)
+												overwrites.push({
+													id: newMember.user.id,
+													allowed: ["VIEW_CHANNEL"]
+												});
+											guild.createChannel(cname, "text", overwrites).then(textchannel => {
+												dcc.textChannel = textchannel.id;
+												textchannel.edit({
+													topic: configuration.text.topic ? configuration.text.topic : "",
+													parent: configuration.text.category,
+													nsfw: configuration.text.nsfw
+												});
+											});
+										}
 									});
 							}
-						});
+						}
+					}
+				},
+				configuration.delay * 1000,
+				oldMember,
+				newMember
+			);
+		} else {
+			let isDynChan = false;
+			for (let key in dcg.channels) {
+				let channels = dcg.channels[key];
+				let dcc = channels.find(c => c.voiceChannel == newMember.voiceChannelID);
+				let configuration = dcg.data.configurations.find(c => c.id == key);
+				if (dcc && configuration) {
+					if (configuration.isolate) {
+						let textchannel = guild.channels.find(c => c.id == dcc.textChannel);
+						if (textchannel)
+							textchannel.overwritePermissions(newMember.user, { VIEW_CHANNEL: true });
+					}
 				}
 			}
 		}
@@ -291,7 +346,6 @@ client.on("message", message => {
 			let args = messageContent[2] || undefined;
 			let guild = message.guild;
 			let dcg = DynChanGuilds[guild.id];
-			console.log(dcg);
 			if (dcg) {
 				if (
 					botPrefix == prefix ||
@@ -437,20 +491,10 @@ function changeConfig(message, args = null) {
 				case "name":
 					args = args.join(" ");
 					reply = `okay the new name will be **${args}**.\n\n`;
-					reply += "Now please provide me the id of a voice channel.\n";
-					t = guild.channels.find(
-						c => c.id == dcg.getConfiguration(dcg.setup.id).triggerChannel
-					);
-					reply += `Current value: **${t ? t.name : "not found"}** (**${
-						dcg.getConfiguration(dcg.setup.id).triggerChannel
-					}**)\n`;
-					reply += "Example: **422801241983418368**\n";
-					reply +=
-						"Info: *This voice channel will be used as 'triggerChannel' people need to join in order to create their own dynamic channel(s).*";
-					message.reply(reply);
+					reply += CCtriggerChannel(message, args, guild, dcg);
 					dcg.getConfiguration(dcg.setup.id).name = args;
 					dcg.saveData();
-					dcg.setup.state = "triggerChannel";
+					message.reply(reply);
 					break;
 				case "triggerChannel":
 					args = args[0];
@@ -458,21 +502,11 @@ function changeConfig(message, args = null) {
 					c = guild.channels.find(c => c.id == args);
 					if (c && (!ec || ec.id == dcg.setup.id)) {
 						if (c.type === "voice") {
-							reply = `okay the triggerChannel will be **${c.name}**.\n`;
-							reply +=
-								"Now please provide me a space-seperated list of ids of roles.\n";
-							reply += "Current value:\n";
-							dcg.getConfiguration(dcg.setup.id).triggerRoles.forEach(r => {
-								t = guild.roles.find(ro => ro.id == r);
-								reply += `	**${t ? t.name : "not found"}** (**${r}**)\n`;
-							});
-							reply += "Example: **494564331552374814 399235851894259732**\n";
-							reply +=
-								"Info: *Only members of at least one of these roles will be able to create their dynamic channel(s).*";
-							message.reply(reply);
 							dcg.getConfiguration(dcg.setup.id).triggerChannel = args;
 							dcg.saveData();
-							dcg.setup.state = "triggerRoles";
+							reply = `okay the triggerChannel will be **${c.name}**.\n`;
+							reply += CCtriggerRoles(message, args, guild, dcg);
+							message.reply(reply);
 						} else
 							message.reply(
 								`sorry the provided id leads to a **${
@@ -493,11 +527,14 @@ function changeConfig(message, args = null) {
 						error: []
 					};
 					args.forEach(role => {
-						r = guild.roles.find(r => r.id == role);
-						if (r || dcg.hasTriggerRole(role)) {
-							rc = dcg.toggleTriggerRole(r.id);
-							if (rc) roles.enabled.push(r.id);
-							else roles.disabled.push(r.id);
+						r =
+							guild.roles.find(r => r == role) || guild.roles.find(r => r.id == role);
+						if (r) {
+							// || dcg.hasTriggerRole(role)) {
+							let rID = r.id || r;
+							rc = dcg.toggleTriggerRole(rID);
+							if (rc) roles.enabled.push(rID);
+							else roles.disabled.push(rID);
 						} else roles.error.push(role);
 					});
 					if (roles.enabled.length != 0) {
@@ -527,20 +564,12 @@ function changeConfig(message, args = null) {
 						reply +=
 							"You did not provide any valid triggerRole and there is none set yet. Please try again.";
 					else {
-						dcg.setup.state = "createTextChannel";
-						reply += `Now please tell me if you want to create a dynamic **text** channel for each dynamic voice channel.\n`;
-						reply += `Current value: **${
-							dcg.getConfiguration(dcg.setup.id).createTextChannel ? "Yes" : "No"
-						}**\n`;
-						reply += "Example: **Yes**\n";
-						reply +=
-							"Info: The temporary text channel is useful if you want people to have their private disposable chat.";
+						reply += CCcreateTextChannel(message, args, guild, dcg);
 					}
 					message.reply(reply);
 					break;
 				case "createTextChannel":
 					args = args.join("");
-					detail = dcg.setup.detail;
 					val = false;
 					if (args.toLowerCase() == "yes") {
 						val = true;
@@ -550,20 +579,67 @@ function changeConfig(message, args = null) {
 					if (args.toLowerCase() == "yes" || args.toLowerCase() == "no") {
 						dcg.getConfiguration(dcg.setup.id).createTextChannel = val;
 						dcg.saveData();
-						dcg.setup.state = "category";
 						reply = `okay **createTextChannel** has been set to **${val}**.\n`;
-						reply += "Now lets configure the dynamic **voice** channels.\n";
-						reply +=
-							"Please provide the id of a **category** in which the channels should be created.\n";
-						t = guild.channels.find(
-							r => r.id == dcg.getConfiguration(dcg.setup.id)[detail].category
+						reply += CCdelay(message, args, guild, dcg);
+						message.reply(reply);
+					} else
+						message.reply("sorry you need to answer with either **Yes** or **No**.");
+					break;
+				case "delay":
+					args = args[0];
+					n = parseInt(args);
+					if (!isNaN(n)) {
+						if (n >= 0 && n <= 10) {
+							dcg.getConfiguration(dcg.setup.id).delay = n;
+							dcg.saveData();
+							if (n == 0) reply = "okay there will be **no delay**.\n";
+							else
+								reply = `okay the delay will be **${n} second${n == 1 ? "" : "s"}**.\n`;
+							reply += CClimit(message, args, guild, dcg);
+							message.reply(reply);
+						} else
+							message.reply(
+								`sorry **${args}** seems to be out of range. Please send me a number between **0-10**.`
+							);
+					} else
+						message.reply(
+							`sorry **${args}** does not seem to be a number. Please send me a number from **0-10**.`
 						);
-						reply += `Current value: **${t ? t.name : "Not Found"}** (**${
-							dcg.getConfiguration(dcg.setup.id)[detail].category
-						}**)\n`;
-						reply += "Example: **547746501590253583**\n";
-						reply +=
-							"Info: *You can also use **No** if you do not want the voice channels to be placed in a category.*";
+					break;
+				case "limit":
+					args = args[0];
+					n = parseInt(args);
+					if (!isNaN(n)) {
+						if (n >= 0 && n <= 50) {
+							dcg.getConfiguration(dcg.setup.id).limit = n;
+							dcg.saveData();
+							reply = "";
+							if (n == 0) reply += "okay there will be **no limit**.\n";
+							else reply += `okay the limit will be **${n}**.\n`;
+							reply += CCisolate(message, args, guild, dcg);
+							message.reply(reply);
+						} else
+							message.reply(
+								`sorry **${args}** seems to be out of range. Please send me a number between **0-50**.`
+							);
+					} else
+						message.reply(
+							`sorry **${args}** does not seem to be a number. Please send me a number from **0-50**.`
+						);
+					break;
+				case "isolate":
+					args = args.join("");
+					val = false;
+					if (args.toLowerCase() == "yes") {
+						val = true;
+					} else if (args.toLowerCase() == "no") {
+						val = false;
+					}
+					if (args.toLowerCase() == "yes" || args.toLowerCase() == "no") {
+						dcg.getConfiguration(dcg.setup.id).isolate = val;
+						dcg.saveData();
+						reply = `okay **isolate** has been set to **${val}**.\n`;
+						reply += CCcategory(message, args, guild, dcg);
 						message.reply(reply);
 					} else
 						message.reply("sorry you need to answer with either **Yes** or **No**.");
@@ -590,16 +666,8 @@ function changeConfig(message, args = null) {
 						reply = `okay new ${detail} channels will not be placed in any category.\n`;
 					} else message.reply(`sorry there is no channel with the id **${args}**.`);
 					if (valid) {
-						reply += `Now please send me the **prefix** of the name of the new **${detail}** channels.\n`;
-						reply += `Current value: **${
-							dcg.getConfiguration(dcg.setup.id)[detail].prefix == null
-								? "No"
-								: dcg.getConfiguration(dcg.setup.id)[detail].prefix
-						}**\n`;
-						reply += `Example: **[${detail.toUpperCase()}]**\n`;
-						reply += `Info: *You can also use **No** if you do not want the ${detail} channels to have a prefix in the name.*`;
 						dcg.saveData();
-						dcg.setup.state = "prefix";
+						reply += CCprefix(message, args, guild, dcg);
 						message.reply(reply);
 					}
 					break;
@@ -615,15 +683,7 @@ function changeConfig(message, args = null) {
 						reply += "Okay there will be no prefix.\n";
 					}
 					dcg.saveData();
-					reply += `Now please send me the **suffix** of the name of the new **${detail}** channels.\n`;
-					reply += `Current value: **${
-						dcg.getConfiguration(dcg.setup.id)[detail].suffix == null
-							? "No"
-							: dcg.getConfiguration(dcg.setup.id)[detail].suffix
-					}**\n`;
-					reply += "Example: **[Friends]**\n";
-					reply += `Info: *You can also use **No** if you do not want the ${detail} channels to have a suffix in the name.*`;
-					dcg.setup.state = "suffix";
+					reply += CCsuffix(message, args, guild, dcg);
 					message.reply(reply);
 					break;
 				case "suffix":
@@ -638,22 +698,7 @@ function changeConfig(message, args = null) {
 						reply += "Okay there will be no suffix.\n";
 					}
 					dcg.saveData();
-					reply += `Now please tell me what kind of name the **${detail}** channels should have.\n`;
-					reply += "This are the available options:\n";
-					reply += `**1**: Unique random ID. Example: *${shortid.generate()}*\n`;
-					reply += `**2**: Incrementing number. Example: *1*\n`;
-					reply += `**3**: Username of the owner. Example: *${
-						message.author.username
-					}*\n`;
-					reply += `**4**: Nickname of the owner. Example: *${message.member
-						.nickname || `awesome ${message.author.username}`}*\n`;
-					reply += "**Text**: Custom name. Example: *Friends*\n";
-					reply += `Current value: **${translateName(
-						dcg.getConfiguration(dcg.setup.id)[detail].name
-					)}**\n`;
-					reply += "Example: **Dynamic Channel**\n";
-					reply += "Info: *Answer with either 1-4 or with a custom text.*";
-					dcg.setup.state = "channelname";
+					reply += CCchannelname(message, args, guild, dcg);
 					message.reply(reply);
 					break;
 				case "channelname":
@@ -676,25 +721,9 @@ function changeConfig(message, args = null) {
 					}
 					dcg.saveData();
 					if (detail == "voice") {
-						reply += "Now please tell me the userlimit of the voice channel.\n";
-						reply += "You can use the numbers from 0-99.\n";
-						reply += `Current value: **${
-							dcg.getConfiguration(dcg.setup.id).voice.userlimit
-						}**\n`;
-						reply += "Example: **15**\n";
-						reply += "Info: *If you want to disable the userlimit use **0**.*";
-						dcg.setup.state = "userlimit";
+						reply += CCuserlimit(message, args, guild, dcg);
 					} else if (detail == "text") {
-						reply +=
-							"Now please tell me if the text channels should be flagged **NSFW** (Not Safe For Work).\n";
-						reply += "Please answer with either **Yes** or **No**.\n";
-						reply += `Current value: **${
-							dcg.getConfiguration(dcg.setup.id).text.nsfw ? "Yes" : "No"
-						}**\n`;
-						reply += "Example: **Yes**\n";
-						reply +=
-							"Info *If a text channel is flagged with NSFW users who enter the channel the first time will be prompted to continue joining or leave.*";
-						dcg.setup.state = "nsfw";
+						reply += CCnsfw(message, args, guild, dcg);
 					}
 					message.reply(reply);
 					break;
@@ -711,18 +740,8 @@ function changeConfig(message, args = null) {
 								reply = `okay the voice channels will be limited by ${n} user${
 									n == 1 ? "" : "s"
 								}.\n`;
-							reply +=
-								"Now please tell me what bitrate the voice channels should have.\n";
-							reply +=
-								"By default Discord voice channels have a bitrate of 64kbps (or 640000bps) but it can be increased to 96kbps.\n";
-							reply += "You can choose a number between 8 and 96.\n";
-							reply += `Current value: **${dcg.getConfiguration(dcg.setup.id).voice
-								.bitrate / 1000}**\n`;
-							reply += "Example: **70**\n";
-							reply +=
-								"Info: *The bitrate of a voice channel defines the sound quality the higher the sound, the better the quality. If you are unsure about the bitrate just send me **64** which is the default.*";
+							reply += CCbitrate(message, args, guild, dcg);
 							message.reply(reply);
-							dcg.setup.state = "bitrate";
 						} else
 							message.reply(
 								`sorry **${args}** seems to be out of range. Please send me a number between **0-99**.`
@@ -741,29 +760,10 @@ function changeConfig(message, args = null) {
 							dcg.saveData();
 							reply = `okay the bitrate will be **${n}kbps**.\n`;
 							if (dcg.getConfiguration(dcg.setup.id).createTextChannel) {
-								dcg.setup.state = "category";
 								dcg.setup.detail = "text";
-								detail = dcg.setup.detail;
-								reply += `Now please provide the id of a **category** in which the **${
-									dcg.setup.detail
-								}** channels should be created.\n`;
-								t = guild.channels.find(
-									r => r.id == dcg.getConfiguration(dcg.setup.id)[detail].category
-								);
-								reply += `Current value: **${t ? t.name : "Not Found"}** (**${
-									dcg.getConfiguration(dcg.setup.id)[detail].category
-								}**)\n`;
-								reply += "Example: **547746501590253583**\n";
-								reply += `Info: *You can also use **No** if you do not want the **${
-									dcg.setup.detail
-								}** channels to be placed in a category.*`;
+								reply += CCcategory(message, args, guild, dcg);
 							} else {
-								reply += "Now let's talk about **permissions**:\n";
-								reply +=
-									"Please tell me which permissions the creator of a channel should get.";
-								reply +=
-									"The permissions are then automatically applied to the voice and/or text channels.";
-								dcg.setup.state = "permissions";
+								reply += CCpermissions(message, args, guild, dcg);
 								message.reply(reply);
 							}
 							message.reply(reply);
@@ -788,13 +788,7 @@ function changeConfig(message, args = null) {
 						dcg.getConfiguration(dcg.setup.id).text.nsfw = val;
 						dcg.saveData();
 						reply = `okay text channels **will ${val ? "" : "not"}** be NSFW.\n`;
-						reply += "Now please tell me the topic of the text channels:\n";
-						reply += `Current value: **${
-							dcg.getConfiguration(dcg.setup.id).text.topic
-						}**\n`;
-						reply += "Example: **This is a temporary channel. Welcome!**.\n";
-						reply += "Info: *You can use **No** to skip this.*";
-						dcg.setup.state = "topic";
+						reply += CCtopic(message, args, guild, dcg);
 						message.reply(reply);
 					} else
 						message.reply("sorry you need to answer with either **Yes** or **No**.");
@@ -809,16 +803,7 @@ function changeConfig(message, args = null) {
 					}
 					dcg.getConfiguration(dcg.setup.id).text.topic = args;
 					dcg.saveData();
-					reply += "Now let's talk about **permissions**:\n";
-					reply +=
-						"Please tell me which permissions the creator of a channel should get.\n";
-					reply +=
-						"The permissions are then automatically applied to the voice and/or text channels.\n";
-					reply += "Current value:\n";
-					reply += "--";
-					reply += "Example: **MUTE_MEMBERS**\n";
-					reply += `Info: *Use **${botPrefix} showPermissions** to view all available permissions.*\n`;
-					dcg.setup.state = "permissions";
+					reply += CCpermissions(message, args, guild, dcg);
 					message.reply(reply);
 					break;
 				case "permissions":
@@ -868,14 +853,10 @@ function changeConfig(message, args = null) {
 					dcg.setup.reset();
 					break;
 				default:
-					reply = "okay let us begin with the name of the configuration.\n";
-					reply += "What should be the name?\n";
-					reply += `Current value: **${dcg.getConfiguration(dcg.setup.id).name}**\n`;
-					reply += "Example: **Nice Configuration**\n";
-					reply +=
-						"Info: *The purpose of the name is for you to recognize the configuration.*";
+					reply = "okay let us begin with the setup of the configuration.\n";
+					// reply += CCname(message, args, guild, dcg);
+					reply += CCdelay(message, args, guild, dcg);
 					message.reply(reply);
-					dcg.setup.state = "name";
 					break;
 			}
 		else
@@ -887,6 +868,226 @@ function changeConfig(message, args = null) {
 			`sorry I could not find a configuration with the id **${args}**.`
 		);
 }
+
+function CCname(message, args, guild, dcg) {
+	let reply = "What should be the name?\n";
+	reply += `Current value: **${dcg.getConfiguration(dcg.setup.id).name}**\n`;
+	reply += "Example: **Nice Configuration**\n";
+	reply +=
+		"Info: *The purpose of the name is for you to recognize the configuration.*";
+	dcg.setup.state = "name";
+	return reply;
+}
+function CCtriggerChannel(message, args, guild, dcg) {
+	let reply = "Now please provide me the id of a voice channel.\n";
+	t = guild.channels.find(
+		c => c.id == dcg.getConfiguration(dcg.setup.id).triggerChannel
+	);
+	reply += `Current value: **${t ? t.name : "not found"}** (**${
+		dcg.getConfiguration(dcg.setup.id).triggerChannel
+	}**)\n`;
+	reply += "Example: **422801241983418368**\n";
+	reply +=
+		"Info: *This voice channel will be used as 'triggerChannel' people need to join in order to create their own dynamic channel(s).*";
+	dcg.setup.state = "triggerChannel";
+	return reply;
+}
+function CCtriggerRoles(message, args, guild, dcg) {
+	let reply = "Now please provide me a space-seperated list of ids of roles.\n";
+	reply += "Current value:\n";
+	dcg.getConfiguration(dcg.setup.id).triggerRoles.forEach(r => {
+		t = guild.roles.find(ro => ro.id == r);
+		reply += `	**${t ? t.name : "not found"}** (**${r}**)\n`;
+	});
+	reply += "Example: **494564331552374814 399235851894259732**\n";
+	reply +=
+		"Info: *Only members of at least one of these roles will be able to create their dynamic channel(s).*";
+	dcg.setup.state = "triggerRoles";
+	return reply;
+}
+function CCcreateTextChannel(message, args, guild, dcg) {
+	let reply = `Now please tell me if you want to create a dynamic **text** channel for each dynamic voice channel.\n`;
+	reply += `Current value: **${
+		dcg.getConfiguration(dcg.setup.id).createTextChannel ? "Yes" : "No"
+	}**\n`;
+	reply += "Example: **Yes**\n";
+	reply +=
+		"Info: The temporary text channel is useful if you want people to have their private disposable chat.";
+	dcg.setup.state = "createTextChannel";
+	return reply;
+}
+function CCdelay(message, args, guild, dcg) {
+	let reply =
+		"Now please tell me how many seconds (0-10) it should take before this configuration should trigger:\n";
+	reply += `Current value: **${
+		dcg.getConfiguration(dcg.setup.id).delay == 0
+			? "No delay"
+			: dcg.getConfiguration(dcg.setup.id).delay +
+			  " second" +
+			  (dcg.getConfiguration(dcg.setup.id).delay == 1 ? "" : "s")
+	}**\n`;
+	reply += "Example: 5\n";
+	reply +=
+		"Info: 0 = no delay. The delay is useful if you have users with lower priority.";
+	dcg.setup.state = "delay";
+	return reply;
+}
+function CClimit(message, args, guild, dcg) {
+	reply =
+		"Now please tell me a maximum number of channels that should exist (0-50).\n";
+	reply += "Example: 15\n";
+	reply += `Current value: **${
+		dcg.getConfiguration(dcg.setup.id).limit == 0
+			? "No limit"
+			: dcg.getConfiguration(dcg.setup.id).limit +
+			  " channel" +
+			  (dcg.getConfiguration(dcg.setup.id).limit == 1 ? "" : "s")
+	}**\n`;
+	reply +=
+		"Info: 0 = No limit. The limit is useful if you want a specific configuration to have only a few channels.";
+	dcg.setup.state = "limit";
+	return reply;
+}
+function CCisolate(message, args, guild, dcg) {
+	reply =
+		"Now please tell me whether the text channels should be visible to everyone or just the users inside of the corresponding voice channel.\n";
+	reply += "**Yes** = Everyone **No** = Only users inside the voice channel\n";
+	reply += `Current: **${
+		dcg.getConfiguration(dcg.setup.id).isolate
+			? "Visible to everyone"
+			: "Visible only to users inside the corresponding voice channel"
+	}**\n`;
+	reply +=
+		"Info: Limiting the visibility only to the users inside of the corresponding voice channel will make your discord server look much cleaner.";
+	dcg.setup.state = "isolate";
+	return reply;
+}
+function CCcategory(message, args, guild, dcg) {
+	detail = dcg.setup.detail;
+	let reply = `Now lets configure the dynamic **${
+		dcg.setup.detail
+	}** channels.\n`;
+	reply += `Please provide the id of a **category** in which the **${
+		dcg.setup.detail
+	}** channels should be created.\n`;
+	t = guild.channels.find(
+		r => r.id == dcg.getConfiguration(dcg.setup.id)[detail].category
+	);
+	reply += `Current value: **${t ? t.name : "Not Found"}** (**${
+		dcg.getConfiguration(dcg.setup.id)[detail].category
+	}**)\n`;
+	reply += "Example: **547746501590253583**\n";
+	reply += `Info: *You can also use **No** if you do not want the **${
+		dcg.setup.detail
+	}** channels to be placed in a category.*`;
+	dcg.setup.state = "category";
+	return reply;
+}
+function CCprefix(message, args, guild, dcg) {
+	let reply = `Now please send me the **prefix** of the name of the new **${detail}** channels.\n`;
+	reply += `Current value: **${
+		dcg.getConfiguration(dcg.setup.id)[detail].prefix == null
+			? "No"
+			: dcg.getConfiguration(dcg.setup.id)[detail].prefix
+	}**\n`;
+	reply += `Example: **[${detail.toUpperCase()}]**\n`;
+	reply += `Info: *You can also use **No** if you do not want the ${detail} channels to have a prefix in the name.*`;
+	dcg.setup.state = "prefix";
+	return reply;
+}
+function CCsuffix(message, args, guild, dcg) {
+	let reply = `Now please send me the **suffix** of the name of the new **${detail}** channels.\n`;
+	reply += `Current value: **${
+		dcg.getConfiguration(dcg.setup.id)[detail].suffix == null
+			? "No"
+			: dcg.getConfiguration(dcg.setup.id)[detail].suffix
+	}**\n`;
+	reply += "Example: **[Friends]**\n";
+	reply += `Info: *You can also use **No** if you do not want the ${detail} channels to have a suffix in the name.*`;
+	dcg.setup.state = "suffix";
+	return reply;
+}
+function CCchannelname(message, args, guild, dcg) {
+	let reply = `Now please tell me what kind of name the **${detail}** channels should have.\n`;
+	reply += "This are the available options:\n";
+	reply += `**1**: Unique random ID. Example: *${uid.randomUUID(12)}*\n`;
+	reply += `**2**: Incrementing number. Example: *1*\n`;
+	reply += `**3**: Username of the owner. Example: *${
+		message.author.username
+	}*\n`;
+	reply += `**4**: Nickname of the owner. Example: *${message.member.nickname ||
+		`awesome ${message.author.username}`}*\n`;
+	reply += "**Text**: Custom name. Example: *Friends*\n";
+	reply += `Current value: **${translateName(
+		dcg.getConfiguration(dcg.setup.id)[detail].name
+	)}**\n`;
+	reply += "Example: **Dynamic Channel**\n";
+	reply += "Info: *Answer with either 1-4 or with a custom text.*";
+	dcg.setup.state = "channelname";
+	return reply;
+}
+function CCuserlimit(message, args, guild, dcg) {
+	let reply = "Now please tell me the userlimit of the voice channel.\n";
+	reply += "You can use the numbers from 0-99.\n";
+	reply += `Current value: **${
+		dcg.getConfiguration(dcg.setup.id).voice.userlimit
+	}**\n`;
+	reply += "Example: **15**\n";
+	reply += "Info: *If you want to disable the userlimit use **0**.*";
+	dcg.setup.state = "userlimit";
+	return reply;
+}
+function CCbitrate(message, args, guild, dcg) {
+	let reply =
+		"Now please tell me what bitrate the voice channels should have.\n";
+	reply +=
+		"By default Discord voice channels have a bitrate of 64kbps (or 640000bps) but it can be increased to 96kbps.\n";
+	reply += "You can choose a number between 8 and 96.\n";
+	reply += `Current value: **${dcg.getConfiguration(dcg.setup.id).voice.bitrate /
+		1000}**\n`;
+	reply += "Example: **70**\n";
+	reply +=
+		"Info: *The bitrate of a voice channel defines the sound quality the higher the sound, the better the quality. If you are unsure about the bitrate just send me **64** which is the default.*";
+	dcg.setup.state = "bitrate";
+	return reply;
+}
+function CCnsfw(message, args, guild, dcg) {
+	let reply =
+		"Now please tell me if the text channels should be flagged **NSFW** (Not Safe For Work).\n";
+	reply += "Please answer with either **Yes** or **No**.\n";
+	reply += `Current value: **${
+		dcg.getConfiguration(dcg.setup.id).text.nsfw ? "Yes" : "No"
+	}**\n`;
+	reply += "Example: **Yes**\n";
+	reply +=
+		"Info *If a text channel is flagged with NSFW users who enter the channel the first time will be prompted to continue joining or leave.*";
+	dcg.setup.state = "nsfw";
+	return reply;
+}
+function CCtopic(message, args, guild, dcg) {
+	let reply = "Now please tell me the topic of the text channels:\n";
+	reply += `Current value: **${
+		dcg.getConfiguration(dcg.setup.id).text.topic
+	}**\n`;
+	reply += "Example: **This is a temporary channel. Welcome!**.\n";
+	reply += "Info: *You can use **No** to skip this.*";
+	dcg.setup.state = "topic";
+	return reply;
+}
+function CCpermissions(message, args, guild, dcg) {
+	let reply = "Now let's talk about **permissions**:\n";
+	reply +=
+		"Please tell me which permissions the creator of a channel should get.";
+	reply +=
+		"The permissions are then automatically applied to the voice and/or text channels.";
+	reply += "Current value:\n";
+	reply += "--";
+	reply += "Example: **MUTE_MEMBERS**\n";
+	reply += `Info: *Use **${botPrefix} showPermissions** to view all available permissions.*\n`;
+	dcg.setup.state = "permissions";
+	return reply;
+}
+
 function cancelSetup(message, args) {
 	let guild = message.guild;
 	let dcg = DynChanGuilds[guild.id];
@@ -907,16 +1108,19 @@ function cancelSetup(message, args) {
 function controlRoles(message, args) {
 	let guild = message.guild;
 	if (args) {
-		let role = guild.roles.find(role => role.id == args);
+		let role =
+			guild.roles.find(role => role == args) ||
+			guild.roles.find(role => role.id == args);
 		if (role) {
-			if (DynChanGuilds[guild.id].setControlRoles(args))
+			let roleID = role.id || role;
+			if (DynChanGuilds[guild.id].setControlRoles(roleID || args))
 				message.reply(`bot control for **${role.name}** has been **enabled**.`);
 			else
 				message.reply(`bot control for **${role.name}** has been **disabled**.`);
 		} else message.reply(`could not find role ${args}.`);
 	} else
 		message.reply(
-			`sorry you need to provide an id. Use **${botPrefix} showRoles** to view all existing roles on this server,.`
+			`sorry you need to provide an id. Use **${botPrefix} showRoles** to view all existing roles on this server.`
 		);
 }
 
@@ -1013,31 +1217,44 @@ function showConfig(message, args) {
 					"**WARNING**: This configuration is **incomplete** and will **not** be used!\n";
 				tunset +=
 					"Following value have to be set in order to complete the setup:\n\n";
-				for (let key in unset) {
-					// if (typeof unset[key] == "object") {
-					// 	if (
-					// 		Object.keys(unset[key]).filter(k => unset[key][k] != null)
-					// 			.length != 0
-					// 	) {
-					// 		tunset += `	**${key}**\n`;
-					// 		for (let skey in unset[key])
-					// 			if (unset[key][skey] != null)
-					// 				tunset += `		${skey}: *${unset[key][skey]}*\n`;
-					// 	}
-					// } else
-					tunset += `	${key}: *${unset[key]}*\n`;
-				}
+				for (let key in unset) tunset += `	${key}: *${unset[key]}*\n`;
 			}
 			let rfields = [];
-			rfields.push({ name: "**id**", value: `*${c.id}*` });
+			rfields.push({
+				name: "**id**",
+				value: `*${c.id}*`,
+				inline: true
+			});
 			rfields.push({
 				name: "**active**",
-				value: c.active ? "**Yes**" : "**No**"
+				value: c.active ? "**Yes**" : "**No**",
+				inline: true
+			});
+			rfields.push({
+				name: "**delay**",
+				value: `*${c.delay}*`,
+				inline: true
+			});
+			rfields.push({
+				name: "**limit**",
+				value: `*${c.limit}*`,
+				inline: true
+			});
+			rfields.push({
+				name: "**createTextChannel**",
+				value: `*${c.createTextChannel ? "Yes" : "No"}*`,
+				inline: true
+			});
+			rfields.push({
+				name: "**isolate**",
+				value: `*${c.isolate ? "Yes" : "No"}*`,
+				inline: true
 			});
 			t = guild.channels.find(ch => ch.id == c.triggerChannel);
 			rfields.push({
 				name: "**triggerChannel**",
-				value: `**${t ? t.name : "Not found"}** (${c.triggerChannel})`
+				value: `**${t ? t.name : "Not found"}** (${c.triggerChannel})`,
+				inline: true
 			});
 			rfields.push({
 				name: "**triggerRoles**",
@@ -1050,10 +1267,6 @@ function showConfig(message, args) {
 					value: `${r}`,
 					inline: true
 				});
-			});
-			rfields.push({
-				name: "**createTextChannel**",
-				value: `*${c.createTextChannel ? "Yes" : "No"}*`
 			});
 			rfields.push({
 				name: "voice",
@@ -1210,9 +1423,7 @@ function translateHex(val) {
 function checkConfig(guild, dcg, dcgConfig) {
 	let unset = {
 		triggerChannel: null,
-		triggerRoles: null,
-		"voice - category": null,
-		"text - category": null
+		triggerRoles: null
 	};
 	let valid = true;
 	if (dcgConfig.triggerChannel != null) {
@@ -1244,36 +1455,6 @@ function checkConfig(guild, dcg, dcgConfig) {
 		valid = false;
 		unset.triggerRoles = "Must include at least one valid role id.";
 	}
-	if (dcgConfig.voice.category != null) {
-		let c = guild.channels.find(c => c.id == dcgConfig.voice.category);
-		if (c) {
-			if (c.type != "category") {
-				valid = false;
-				unset["voice - category"] = "Must be a category channel.";
-			}
-		} else {
-			valid = false;
-			unset["voice - category"] = "Channel does not seem to exist.";
-		}
-	} else {
-		valid = false;
-		unset["voice - category"] = "Must be an channel id.";
-	}
-	if (dcgConfig.text.category != null) {
-		let c = guild.channels.find(c => c.id == dcgConfig.text.category);
-		if (c) {
-			if (c.type != "category") {
-				valid = false;
-				unset["text - category"] = "Must be a category channel.";
-			}
-		} else {
-			valid = false;
-			unset["text - category"] = "Channel does not seem to exist.";
-		}
-	} else {
-		valid = false;
-		unset["text - category"] = "Must be an channel id.";
-	}
 	dcgConfig.valid = valid;
 	dcg.saveData();
 	if (!valid) return unset;
@@ -1302,7 +1483,7 @@ function genName(dcg, vt, conID, member) {
 	let cn = "Unnamed";
 	switch (vt.name) {
 		case 1:
-			cn = shortid.generate();
+			cn = uid.randomUUID(12);
 			break;
 		// case 2:
 		// 	cn = dcg.channels[conID].length;

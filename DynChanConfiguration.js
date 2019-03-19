@@ -1,16 +1,20 @@
 /* jshint esversion: 6 */
-const shortid = require("shortid");
+const ShortUniqueId = require("short-unique-id");
+var uid = new ShortUniqueId();
 
 class DynChanConfiguration {
 	constructor(id = null) {
 		this.name = "Unnamed Configuration";
-		this.id = id || shortid.generate();
+		this.id = id || uid.randomUUID(12);
 		this.active = true;
 		this.valid = false;
 		this.color = Math.floor(Math.random() * 16777215);
 		this.triggerChannel = null;
 		this.triggerRoles = [];
 		this.createTextChannel = false;
+		this.delay = 0;
+		this.limit = 0;
+		this.isolate = false;
 		this.voice = {
 			category: null,
 			prefix: null,
