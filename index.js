@@ -1,5 +1,5 @@
 /* jshint esversion: 6 */
-// process.chdir("/home/zlyfer/DiscordBots/DiscordDynChanBot");
+process.chdir("/home/zlyfer/DiscordBots/DiscordDynChanBot-Rewrite");
 // TODO: Check if the bot has permissions to perform an action, before attempting to!
 
 // TODO: number counting
