@@ -232,7 +232,7 @@ client.on("voiceStateUpdate", (oldMember, newMember) => {
 				function() {
 					if (configuration.valid && configuration.active) {
 						if (newMember.roles.find(r => configuration.triggerRoles.includes(r.id))) {
-							if (dcg.channels[configuration.id] < configuration.limit) {
+							if (dcg.channels[configuration.id] < configuration.limit || configuration.limit == 0) {
 								let dcc = new DynChanChannel(newMember.user.id);
 								dcg.channels[configuration.id].push(dcc);
 								let cname = genName(dcg, configuration.voice, configuration.id, newMember);
