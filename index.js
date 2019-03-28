@@ -856,9 +856,9 @@ function CCchannelname(message, args, guild, dcg) {
 	let reply = `Now please tell me what kind of name the **${detail}** channels should have.\n`;
 	reply += "This are the available options:\n";
 	reply += `**1**: Unique random ID. Example: *${uid.randomUUID(12)}*\n`;
-	reply += `**2**: Incrementing number. Example: *1*\n`;
-	reply += `**3**: Username of the owner. Example: *${message.author.username}*\n`;
-	reply += `**4**: Nickname of the owner. Example: *${message.member.nickname || `awesome ${message.author.username}`}*\n`;
+	// reply += `**2**: Incrementing number. Example: *1*\n`;
+	reply += `**2**: Username of the owner. Example: *${message.author.username}*\n`;
+	reply += `**3**: Nickname of the owner. Example: *${message.member.nickname || `awesome ${message.author.username}`}*\n`;
 	reply += "**Text**: Custom name. Example: *Friends*\n";
 	reply += `Current value: **${translateName(dcg.getConfiguration(dcg.setup.id)[detail].name)}**\n`;
 	reply += "Example: **Dynamic Channel**\n";
@@ -907,8 +907,7 @@ function CCpermissions(message, args, guild, dcg) {
 	let reply = "Now let's talk about **permissions**:\n";
 	reply += "Please tell me which permissions the creator of a channel should get.";
 	reply += "The permissions are then automatically applied to the voice and/or text channels.";
-	reply += "Current value:\n";
-	reply += "--";
+	// reply += "Current value:"; // TODO: List all currently applied permissions.
 	reply += "Example: **MUTE_MEMBERS**\n";
 	reply += `Info: *Use **${botPrefix} showPermissions** to view all available permissions.*\n`;
 	dcg.setup.state = "permissions";
