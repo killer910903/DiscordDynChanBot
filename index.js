@@ -1,14 +1,24 @@
 /* jshint esversion: 6 */
 process.chdir("/home/zlyfer/DiscordBots/DiscordDynChanBot-Rewrite");
 
-// TODO: Check if the bot has permissions to perform an action, before attempting to!
-// TODO: number counting
-// TODO: roman number counting: https://www.npmjs.com/package/roman-numeral
+// TODO: Voice & Text: Same unique id.
+// TODO: Incrementing number as name.
+// TODO: Incrementing number as name roman style: https://www.npmjs.com/package/roman-numeral
 // TODO: Simple/Advanced Setup
+// TODO: Check if the bot has permissions to perform an action, before attempting to!
 
 // FIXME: Channel owner gets changed when someone mutes/deafens himself.
-// FIXME: Isolate only when createTextchannel == true!
 // FIXME: Setup: bitrate -> permissions: Duplicate message!
+// FIXME: Check Category Permissions inherit -> Global permissions for the channel.
+
+// FIXME: lockPermissions -> Waiting for discord.js fix!
+
+// TODO: Do all todos!
+// TODO: 1-Time message to all guild owners that the bot has been updated.
+// TODO: Welcome message to creator & info/help.
+
+// IDEA: Switch to Database? (For web interface!)
+// IDEA: Create web interface?
 
 const Discord = require("discord.js");
 const client = new Discord.Client();
@@ -150,14 +160,12 @@ client.on("ready", () => {
 
 	client.guilds.forEach(guild => {
 		DynChanGuilds[guild.id] = new DynChanGuild(guild.id);
-		// TODO: 1-Time message to all guild owners that the bot has been updated.
 	});
 });
 
 client.on("guildCreate", guild => {
 	DynChanGuilds[guild.id] = new DynChanGuild(guild.id);
 	DynChanGuilds[guild.id].saveData();
-	// TODO: Welcome message to creator & info/help?
 });
 
 client.on("voiceStateUpdate", (oldMember, newMember) => {
@@ -243,55 +251,63 @@ client.on("voiceStateUpdate", (oldMember, newMember) => {
 								let dcc = new DynChanChannel(newMember.user.id);
 								dcg.channels[configuration.id].push(dcc);
 								let cname = genName(dcg, configuration.voice, configuration.id, newMember);
-								guild
-									.createChannel(cname, "voice", [
-										{
-											id: newMember.user.id,
-											allowed: configuration.permissions
-										}
-									])
-									.then(voicechannel => {
-										dcc.voiceChannel = voicechannel.id;
-										voicechannel
-											.edit({
-												parent: configuration.voice.category,
-												userLimit: configuration.voice.userlimit,
-												bitrate: configuration.voice.bitrate
-											})
-											.then(voicechannel => {
-												newMember.edit({ channel: voicechannel });
-											});
-										if (configuration.createTextChannel) {
-											cname = genName(dcg, configuration.text, configuration.id, newMember);
-											let overwrites = [];
-											if (configuration.isolate) {
-												let everyone = guild.roles.find(r => r.name == "@everyone");
-												if (everyone) {
-													overwrites.push({
-														id: everyone.id,
-														denied: ["VIEW_CHANNEL"]
-													});
-												}
-											}
-											overwrites.push({
-												id: newMember.user.id,
-												allowed: configuration.permissions
-											});
-											if (configuration.isolate)
-												overwrites.push({
-													id: newMember.user.id,
-													allowed: ["VIEW_CHANNEL"]
+								let overwrites = [];
+								let tmpp = { id: newMember.user.id, permission: {} };
+								configuration.permissions.forEach(p => {
+									tmpp.permission[p] = true;
+								});
+								overwrites.push(tmpp);
+								guild.createChannel(cname, "voice").then(voicechannel => {
+									dcc.voiceChannel = voicechannel.id;
+									voicechannel
+										.edit({
+											parent: configuration.voice.category,
+											userLimit: configuration.voice.userlimit,
+											bitrate: configuration.voice.bitrate
+										})
+										.then(voicechannel => {
+											voicechannel.lockPermissions().then(voicechannel => {
+												overwrites.forEach(o => {
+													voicechannel.overwritePermissions(o.id, o.permission);
 												});
-											guild.createChannel(cname, "text", overwrites).then(textchannel => {
-												dcc.textChannel = textchannel.id;
-												textchannel.edit({
+											}); // Waiting for lockPermissions fix.
+											newMember.edit({ channel: voicechannel });
+										});
+									if (configuration.createTextChannel) {
+										cname = genName(dcg, configuration.text, configuration.id, newMember);
+										let overwrites = [];
+										if (configuration.isolate) {
+											let everyone = guild.roles.find(r => r.name == "@everyone");
+											if (everyone) {
+												overwrites.push({
+													id: everyone,
+													permission: { VIEW_CHANNEL: false }
+												});
+											}
+										}
+										let tmpp = { id: newMember.user.id, permission: {} };
+										configuration.permissions.forEach(p => {
+											tmpp.permission[p] = true;
+										});
+										overwrites.push(tmpp);
+										guild.createChannel(cname, "text").then(textchannel => {
+											dcc.textChannel = textchannel.id;
+											textchannel
+												.edit({
 													topic: configuration.text.topic ? configuration.text.topic : "",
 													parent: configuration.text.category,
 													nsfw: configuration.text.nsfw
+												})
+												.then(textchannel => {
+													textchannel.lockPermissions().then(textchannel => {
+														overwrites.forEach(o => {
+															textchannel.overwritePermissions(o.id, o.permission);
+														});
+													}); // Waiting for lockPermissions fix.
 												});
-											});
-										}
-									});
+										});
+									}
+								});
 							}
 						}
 					}
@@ -309,7 +325,7 @@ client.on("voiceStateUpdate", (oldMember, newMember) => {
 				if (dcc && configuration) {
 					if (configuration.isolate) {
 						let textchannel = guild.channels.find(c => c.id == dcc.textChannel);
-						if (textchannel) textchannel.overwritePermissions(newMember.user, { VIEW_CHANNEL: true });
+						// if (textchannel) textchannel.overwritePermissions(newMember.user, { VIEW_CHANNEL: true });
 					}
 				}
 			}
@@ -318,6 +334,12 @@ client.on("voiceStateUpdate", (oldMember, newMember) => {
 });
 
 client.on("message", message => {
+	// lockPermissions Test: Waiting for discord.js 11.4.3? (-dev)
+	// message.guild.createChannel('test', 'text').then(tc => {
+	// 	tc.setParent(message.guild.channels.find(c => c.id == "562405191698350100")).then(t => {
+	// 		t.lockPermissions();
+	// 	});
+	// })
 	if (!message.author.bot) {
 		if (message.channel.type == "text") {
 			let messageContent = message.content.split(" ");

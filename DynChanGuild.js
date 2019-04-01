@@ -30,14 +30,7 @@ class DynChanGuild {
 		let data;
 		let file = `${guildConfigFolder}/${this.id}.json`;
 		if (!fs.existsSync(file)) file = "./configTemplate.json";
-		try {
-			data = require(file);
-		} catch (error) {
-			console.error(
-				`Could not load configuration file for guild: ${guildID}\n`,
-				error
-			);
-		}
+		data = require(file);
 		this.data = data;
 	}
 	saveData() {
@@ -49,7 +42,6 @@ class DynChanGuild {
 			this.channels[c.id] = [];
 		});
 	}
-
 	toggle(state = null) {
 		if (state == null)
 			if (this.data.toggle == "on") this.data.toggle = "off";
@@ -99,12 +91,7 @@ class DynChanGuild {
 		return cfg;
 	}
 	hasTriggerRole(id) {
-		if (
-			this.data.configurations
-				.find(c => c.id == this.setup.id)
-				.triggerRoles.find(r => r.id == id)
-		)
-			return true;
+		if (this.data.configurations.find(c => c.id == this.setup.id).triggerRoles.find(r => r.id == id)) return true;
 		else return false;
 	}
 	toggleTriggerRole(id) {
@@ -116,9 +103,7 @@ class DynChanGuild {
 			c.triggerRoles.splice(index, 1);
 		} else {
 			toggle = true;
-			this.data.configurations
-				.find(c => c.id == this.setup.id)
-				.triggerRoles.push(id);
+			this.data.configurations.find(c => c.id == this.setup.id).triggerRoles.push(id);
 		}
 		this.saveData();
 		return toggle;
@@ -132,9 +117,7 @@ class DynChanGuild {
 			c.permissions.splice(index, 1);
 		} else {
 			toggle = true;
-			this.data.configurations
-				.find(c => c.id == this.setup.id)
-				.permissions.push(permission);
+			this.data.configurations.find(c => c.id == this.setup.id).permissions.push(permission);
 		}
 		this.saveData();
 		return toggle;
