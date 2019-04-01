@@ -1,11 +1,15 @@
 /* jshint esversion: 6 */
 process.chdir("/home/zlyfer/DiscordBots/DiscordDynChanBot-Rewrite");
-// TODO: Check if the bot has permissions to perform an action, before attempting to!
 
+// TODO: Check if the bot has permissions to perform an action, before attempting to!
 // TODO: number counting
 // TODO: roman number counting: https://www.npmjs.com/package/roman-numeral
-
 // TODO: Simple/Advanced Setup
+
+// FIXME: Channel owner gets changed when someone mutes/deafens himself.
+// FIXME: Isolate only when createTextchannel == true!
+// FIXME: Setup: bitrate -> permissions: Duplicate message!
+
 const Discord = require("discord.js");
 const client = new Discord.Client();
 const ShortUniqueId = require("short-unique-id");
@@ -123,6 +127,7 @@ const permissionList = {
 	SEND_MESSAGES: "Send messages to the text channel.",
 	SEND_TTS_MESSAGES: "Send text-to-speech messages to the text channel.",
 	MANAGE_MESSAGES: "Delete messages and reactions in the text channel.",
+	MANAGE_CHANNELS: "Edit the channel (e.g. userlimit or bitrate).",
 	EMBED_LINKS: "Embed link to the text channel.",
 	ATTACH_FILES: "Attach files to the text channel.",
 	READ_MESSAGE_HISTORY: "Read the message history of the text channel.",
@@ -161,63 +166,65 @@ client.on("voiceStateUpdate", (oldMember, newMember) => {
 		let guild = oldMember.guild;
 		let dcg = DynChanGuilds[guild.id];
 		let configurationID = Object.keys(dcg.channels).find(cID => dcg.channels[cID].find(dcc => dcc.voiceChannel == oldMember.voiceChannelID));
-		if (configurationID) {
-			let configuration = dcg.data.configurations.find(c => c.id == configurationID);
-			if (configuration) {
-				let textchannel = null;
-				if (configuration.createTextChannel) {
-					let textchannelID = dcg.channels[configurationID].find(c => c.voiceChannel == oldMember.voiceChannelID).textChannel;
-					textchannel = guild.channels.find(c => c.id == textchannelID);
-				}
-				let member = guild.members.find(m => m.voiceChannelID == oldMember.voiceChannelID);
-				if (member) {
-					let dcc = dcg.channels[configuration.id].find(c => c.voiceChannel == oldMember.voiceChannelID);
-					if (dcc) dcc.owner = member.user.id;
-					if (textchannel) {
-						if (configuration.isolate) {
-							let everyone = guild.roles.find(r => r.name == "@everyone");
-							if (everyone)
-								textchannel.overwritePermissions(everyone, {
-									VIEW_CHANNEL: false
-								});
+		if (dcg.data.toggle == "on") {
+			if (configurationID) {
+				let configuration = dcg.data.configurations.find(c => c.id == configurationID);
+				if (configuration) {
+					let textchannel = null;
+					if (configuration.createTextChannel) {
+						let textchannelID = dcg.channels[configurationID].find(c => c.voiceChannel == oldMember.voiceChannelID).textChannel;
+						textchannel = guild.channels.find(c => c.id == textchannelID);
+					}
+					let member = guild.members.find(m => m.voiceChannelID == oldMember.voiceChannelID);
+					if (member) {
+						let dcc = dcg.channels[configuration.id].find(c => c.voiceChannel == oldMember.voiceChannelID);
+						if (dcc) dcc.owner = member.user.id;
+						if (textchannel) {
+							if (configuration.isolate) {
+								let everyone = guild.roles.find(r => r.name == "@everyone");
+								if (everyone)
+									textchannel.overwritePermissions(everyone, {
+										VIEW_CHANNEL: false
+									});
+							}
+							let omp = {};
+							configuration.permissions.forEach(p => {
+								omp[p] = false;
+							});
+							let mp = {};
+							configuration.permissions.forEach(p => {
+								mp[p] = true;
+							});
+							if (configuration.isolate) omp["VIEW_CHANNEL"] = false;
+							textchannel.overwritePermissions(oldMember.user, omp);
+							textchannel.overwritePermissions(member.user, mp);
+							textchannel.edit({
+								name: genName(dcg, configuration.text, configuration.id, member)
+							});
 						}
-						let omp = {};
-						configuration.permissions.forEach(p => {
-							omp[p] = false;
+						oldMember.voiceChannel.replacePermissionOverwrites({
+							overwrites: [
+								{
+									id: oldMember.user.id,
+									allowed: []
+								},
+								{
+									id: member.user.id,
+									allowed: configuration.permissions
+								}
+							]
 						});
-						let mp = {};
-						configuration.permissions.forEach(p => {
-							mp[p] = true;
+						oldMember.voiceChannel.edit({
+							name: genName(dcg, configuration.voice, configuration.id, member)
 						});
-						if (configuration.isolate) omp["VIEW_CHANNEL"] = false;
-						textchannel.overwritePermissions(oldMember.user, omp);
-						textchannel.overwritePermissions(member.user, mp);
-						textchannel.edit({
-							name: genName(dcg, configuration.text, configuration.id, member)
+					} else {
+						if (textchannel) textchannel.delete();
+						oldMember.voiceChannel.delete().then(r => {
+							let t = dcg.channels[configuration.id].find(c => c.voiceChannel == oldMember.voiceChannelID);
+							let index = dcg.channels[configuration.id].indexOf(t);
+							dcg.channels[configuration.id].splice(index, 1);
 						});
 					}
-					oldMember.voiceChannel.replacePermissionOverwrites({
-						overwrites: [
-							{
-								id: oldMember.user.id,
-								allowed: []
-							},
-							{
-								id: member.user.id,
-								allowed: configuration.permissions
-							}
-						]
-					});
-					oldMember.voiceChannel.edit({
-						name: genName(dcg, configuration.voice, configuration.id, member)
-					});
-				} else {
-					if (textchannel) textchannel.delete();
-					oldMember.voiceChannel.delete().then(r => {
-						let t = dcg.channels[configuration.id].find(c => c.voiceChannel == oldMember.voiceChannelID);
-						let index = dcg.channels[configuration.id].indexOf(t);
-						dcg.channels[configuration.id].splice(index, 1);
-					});
 				}
 			}
 		}
@@ -226,7 +233,7 @@ client.on("voiceStateUpdate", (oldMember, newMember) => {
 	guild = newMember.guild;
 	dcg = DynChanGuilds[guild.id];
 	configuration = dcg.data.configurations.find(c => c.triggerChannel == newMember.voiceChannelID);
-	if (dcg.data.toggle) {
+	if (dcg.data.toggle == "on") {
 		if (configuration) {
 			setTimeout(
 				function() {
@@ -538,10 +545,10 @@ function changeConfig(message, args = null) {
 						if (n >= 0 && n <= 50) {
 							dcg.getConfiguration(dcg.setup.id).limit = n;
 							dcg.saveData();
-							reply = "";
-							if (n == 0) reply += "okay there will be **no limit**.\n";
-							else reply += `okay the limit will be **${n}**.\n`;
-							reply += CCisolate(message, args, guild, dcg);
+							if (n == 0) reply = "okay there will be **no limit**.\n";
+							else reply = `okay the limit will be **${n}**.\n`;
+							if (dcg.getConfiguration(dcg.setup.id).createTextChannel) reply += CCisolate(message, args, guild, dcg);
+							else reply += CCcategory(message, args, guild, dcg);
 							message.reply(reply);
 						} else message.reply(`sorry **${args}** seems to be out of range. Please send me a number between **0-50**.`);
 					} else message.reply(`sorry **${args}** does not seem to be a number. Please send me a number from **0-50**.`);
