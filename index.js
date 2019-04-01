@@ -325,7 +325,7 @@ client.on("voiceStateUpdate", (oldMember, newMember) => {
 				if (dcc && configuration) {
 					if (configuration.isolate) {
 						let textchannel = guild.channels.find(c => c.id == dcc.textChannel);
-						// if (textchannel) textchannel.overwritePermissions(newMember.user, { VIEW_CHANNEL: true });
+						if (textchannel) textchannel.overwritePermissions(newMember.user, { VIEW_CHANNEL: true });
 					}
 				}
 			}
