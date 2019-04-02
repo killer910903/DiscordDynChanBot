@@ -197,7 +197,7 @@ client.on("voiceStateUpdate", (oldMember, newMember) => {
 							}
 							let omp = {};
 							configuration.permissions.forEach(p => {
-								omp[p] = false;
+								omp[p] = null;
 							});
 							let mp = {};
 							configuration.permissions.forEach(p => {
