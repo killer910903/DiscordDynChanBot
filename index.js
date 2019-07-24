@@ -1,28 +1,24 @@
 /* jshint esversion: 6 */
-process.chdir("/home/zlyfer/DiscordBots/DiscordDynChanBot-Rewrite");
+// process.chdir("/home/zlyfer/DiscordBots/DiscordDynChanBot-Rewrite");
 
-// TODO: Voice & Text: Same unique id.
-// TODO: Incrementing number as name.
-// TODO: Incrementing number as name roman style: https://www.npmjs.com/package/roman-numeral
-// TODO: Simple/Advanced Setup
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! //
+// !!!!!!!!!!!!!!FIXME: lockPermissions -> Waiting for discord.js fix!!!!!!!!!!!!!!! //
+// !Beware custom change of: https://github.com/discordjs/discord.js/pull/2800/files //
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! //
+
 // TODO: Check if the bot has permissions to perform an action, before attempting to!
-
-// FIXME: Channel owner gets changed when someone mutes/deafens himself.
-// FIXME: Setup: bitrate -> permissions: Duplicate message!
-// FIXME: Check Category Permissions inherit -> Global permissions for the channel.
-
-// FIXME: lockPermissions -> Waiting for discord.js fix!
-
 // TODO: Do all todos!
 // TODO: 1-Time message to all guild owners that the bot has been updated.
 // TODO: Welcome message to creator & info/help.
-
-// IDEA: Switch to Database? (For web interface!)
-// IDEA: Create web interface?
+// FIXME: Owner changes upon mute/unmute/join/leave.
+// FIXME: If owner changes permissions get cleared.
+// BUG:!! Setup: bitrate -> permissions: Duplicate message! // Doesn't matter due to web interface.
+// BUG: Duplicate ID for configurations when creating a new one. // Maybe Fixed!
 
 const Discord = require("discord.js");
 const client = new Discord.Client();
 const ShortUniqueId = require("short-unique-id");
+const RomanNumerals = require("roman-numeral");
 var uid = new ShortUniqueId();
 
 var DynChanGuilds = {};
@@ -245,74 +241,80 @@ client.on("voiceStateUpdate", (oldMember, newMember) => {
 		if (configuration) {
 			setTimeout(
 				function() {
-					if (configuration.valid && configuration.active) {
-						if (newMember.roles.find(r => configuration.triggerRoles.includes(r.id))) {
-							if (dcg.channels[configuration.id] < configuration.limit || configuration.limit == 0) {
-								let dcc = new DynChanChannel(newMember.user.id);
-								dcg.channels[configuration.id].push(dcc);
-								let cname = genName(dcg, configuration.voice, configuration.id, newMember);
-								let overwrites = [];
-								let tmpp = { id: newMember.user.id, permission: {} };
-								configuration.permissions.forEach(p => {
-									tmpp.permission[p] = true;
-								});
-								overwrites.push(tmpp);
-								guild.createChannel(cname, "voice").then(voicechannel => {
-									dcc.voiceChannel = voicechannel.id;
-									voicechannel
-										.edit({
-											parent: configuration.voice.category,
-											userLimit: configuration.voice.userlimit,
-											bitrate: configuration.voice.bitrate
-										})
-										.then(voicechannel => {
-											voicechannel.lockPermissions().then(voicechannel => {
-												overwrites.forEach(o => {
-													voicechannel.overwritePermissions(o.id, o.permission);
+					if (configuration) {
+						if (configuration.valid && configuration.active) {
+							if (newMember.roles.find(r => configuration.triggerRoles.includes(r.id))) {
+								if (dcg.channels[configuration.id] < configuration.limit || configuration.limit == 0) {
+									let dcc = new DynChanChannel(newMember.user.id);
+									dcg.channels[configuration.id].push(dcc);
+									let cname = genName(dcg, configuration.voice, configuration.id, newMember);
+									let overwrites = [];
+									let tmpp = { id: newMember.user.id, permission: {} };
+									configuration.permissions.forEach(p => {
+										tmpp.permission[p] = true;
+									});
+									overwrites.push(tmpp);
+									guild.createChannel(cname, "voice").then(voicechannel => {
+										if (voiceChannel) {
+											dcc.voiceChannel = voicechannel.id;
+											voicechannel
+												.edit({
+													parent: configuration.voice.category,
+													userLimit: configuration.voice.userlimit,
+													bitrate: configuration.voice.bitrate
+												})
+												.then(voicechannel => {
+													voicechannel.lockPermissions().then(voicechannel => {
+														overwrites.forEach(o => {
+															voicechannel.overwritePermissions(o.id, o.permission);
+														});
+													}); // Waiting for lockPermissions fix.
+													newMember.edit({ channel: voicechannel });
 												});
-											}); // Waiting for lockPermissions fix.
-											newMember.edit({ channel: voicechannel });
-										});
-									if (configuration.createTextChannel) {
-										cname = genName(dcg, configuration.text, configuration.id, newMember);
-										let overwrites = [];
-										if (configuration.isolate) {
-											let everyone = guild.roles.find(r => r.name == "@everyone");
-											if (everyone) {
-												overwrites.push({
-													id: everyone,
-													permission: { VIEW_CHANNEL: false }
+											if (configuration.createTextChannel) {
+												cname = genName(dcg, configuration.text, configuration.id, newMember);
+												let overwrites = [];
+												if (configuration.isolate) {
+													let everyone = guild.roles.find(r => r.name == "@everyone");
+													if (everyone) {
+														overwrites.push({
+															id: everyone,
+															permission: { VIEW_CHANNEL: false }
+														});
+													}
+												}
+												let tmpp = { id: newMember.user.id, permission: {} };
+												configuration.permissions.forEach(p => {
+													tmpp.permission[p] = true;
+												});
+												overwrites.push(tmpp);
+												guild.createChannel(cname, "text").then(textchannel => {
+													dcc.textChannel = textchannel.id;
+													textchannel
+														.edit({
+															topic: configuration.text.topic ? configuration.text.topic : "",
+															parent: configuration.text.category,
+															nsfw: configuration.text.nsfw
+														})
+														.then(textchannel => {
+															textchannel.lockPermissions().then(textchannel => {
+																// Waiting for lockPermissions fix.
+																overwrites.forEach(o => {
+																	textchannel.overwritePermissions(o.id, o.permission);
+																});
+															});
+														});
 												});
 											}
 										}
-										let tmpp = { id: newMember.user.id, permission: {} };
-										configuration.permissions.forEach(p => {
-											tmpp.permission[p] = true;
-										});
-										overwrites.push(tmpp);
-										guild.createChannel(cname, "text").then(textchannel => {
-											dcc.textChannel = textchannel.id;
-											textchannel
-												.edit({
-													topic: configuration.text.topic ? configuration.text.topic : "",
-													parent: configuration.text.category,
-													nsfw: configuration.text.nsfw
-												})
-												.then(textchannel => {
-													textchannel.lockPermissions().then(textchannel => {
-														overwrites.forEach(o => {
-															textchannel.overwritePermissions(o.id, o.permission);
-														});
-													}); // Waiting for lockPermissions fix.
-												});
-										});
-									}
-								});
+									});
+								}
 							}
 						}
 					}
 				},
 				configuration.delay * 1000,
+				configuration,
 				oldMember,
 				newMember
 			);
@@ -885,9 +887,10 @@ function CCchannelname(message, args, guild, dcg) {
 	let reply = `Now please tell me what kind of name the **${detail}** channels should have.\n`;
 	reply += "This are the available options:\n";
 	reply += `**1**: Unique random ID. Example: *${uid.randomUUID(12)}*\n`;
-	// reply += `**2**: Incrementing number. Example: *1*\n`;
-	reply += `**2**: Username of the owner. Example: *${message.author.username}*\n`;
-	reply += `**3**: Nickname of the owner. Example: *${message.member.nickname || `awesome ${message.author.username}`}*\n`;
+	reply += `**2**: Incrementing number. Example: *6*\n`;
+	reply += `**3**: Incrementing number. Example: *VI*\n`;
+	reply += `**4**: Username of the owner. Example: *${message.author.username}*\n`;
+	reply += `**5**: Nickname of the owner. Example: *${message.member.nickname || `awesome ${message.author.username}`}*\n`;
 	reply += "**Text**: Custom name. Example: *Friends*\n";
 	reply += `Current value: **${translateName(dcg.getConfiguration(dcg.setup.id)[detail].name)}**\n`;
 	reply += "Example: **Dynamic Channel**\n";
@@ -1215,16 +1218,20 @@ function showPermissions(message, args) {
 
 function translateName(val) {
 	switch (val) {
-		case 1:
-			return "Unique ID";
-		// case 2:
-		// 	return "Incrementing Number";
-		case 2:
-			return "Username of Author";
-		case 3:
-			return "Nickname of Author";
-		default:
-			return val;
+	case 1:
+		return "Unique ID";
+	case 2:
+		return "Incrementing Number";
+	case 3:
+		return "Incrementing Roman Number";
+	case 4:
+		return "Username of Author";
+	case 5:
+		return "Nickname of Author";
+	case 6:
+		return "Fixed Name";
+	default:
+		return val;
 	}
 }
 
@@ -1292,28 +1299,33 @@ function hasRole(guild, member) {
 }
 
 function genName(dcg, vt, conID, member) {
-	let cp = vt.prefix ? vt.prefix : "";
-	let cs = vt.suffix ? vt.suffix : "";
-	let cn = "Unnamed";
-	switch (vt.name) {
-		case 1:
-			cn = uid.randomUUID(12);
-			break;
-		// case 2:
-		// 	cn = dcg.channels[conID].length;
-		// 	break;
-		case 2:
-			cn = member.user.username;
-			break;
-		case 3:
-			if (member.nickname) cn = member.nickname;
-			else cn = member.user.username;
-			break;
-		default:
-			cn = vt.name;
-			break;
+	let dcc = dcg.channels[conID].find(dcc => dcc.owner == member.user.id);
+	if (dcc.uniqueNameId == null) dcc.uniqueNameId = uid.randomUUID(12).toLowerCase();
+	let gen = [{ o: vt.prefix, g: "" }, { o: vt.name, g: "" }, { o: vt.suffix, g: "" }];
+	for (let i = 0; i < gen.length; i++) {
+		switch (gen[i].o) {
+			case 1:
+				gen[i].g = dcc.uniqueNameId;
+				break;
+			case 2:
+				gen[i].g = dcg.channels[conID].length;
+				break;
+			case 3:
+				gen[i].g = RomanNumerals.convert(dcg.channels[conID].length);
+				break;
+			case 4:
+				gen[i].g = member.user.username;
+				break;
+			case 5:
+				if (member.nickname) gen[i].g = member.nickname;
+				else gen[i].g = member.user.username;
+				break;
+			default:
+				gen[i].g = gen[i].o;
+				break;
+		}
 	}
-	return `${cp} ${cn} ${cs}`;
+	return `${gen[0].g} ${gen[1].g} ${gen[2].g}`;
 }
 
 process.on("unhandledRejection", err => {

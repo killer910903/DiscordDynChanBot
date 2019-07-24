@@ -4,6 +4,7 @@ class DynChanChannel {
 		this.owner = owner;
 		this.voiceChannel = null;
 		this.textChannel = null;
+		this.uniqueNameId = null;
 	}
 }
 module.exports = DynChanChannel;

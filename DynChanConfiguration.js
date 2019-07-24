@@ -3,9 +3,9 @@ const ShortUniqueId = require("short-unique-id");
 var uid = new ShortUniqueId();
 
 class DynChanConfiguration {
-	constructor(id = null) {
+	constructor() {
 		this.name = "Unnamed Configuration";
-		this.id = id || uid.randomUUID(12);
+		this.id = uid.randomUUID(12);
 		this.active = true;
 		this.valid = false;
 		this.color = Math.floor(Math.random() * 16777215);
