@@ -15,6 +15,7 @@ class DynChanConfiguration {
 		this.delay = 0;
 		this.limit = 0;
 		this.isolate = false;
+		this.permaowner = false;
 		this.voice = {
 			category: null,
 			prefix: null,

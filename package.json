@@ -1,12 +1,28 @@
 {
-  "name": "TestZL",
-  "version": "1.0.0",
-  "description": "Discord Bot from zlyfa!",
-  "main": "index.js",
-  "author": "zlyfa!",
-  "dependencies": {
-    "discord.js": "11.4.2",
-    "roman-numeral": "^0.2.6",
-    "short-unique-id": "^1.1.1"
-  }
+	"name": "DynChanBot",
+	"version": "1.0.0",
+	"description": "Dynamic temporary channels.",
+	"main": "index.js",
+	"dependencies": {
+		"discord.js": "11.5.1",
+		"roman-numeral": "^0.2.6",
+		"short-unique-id": "^1.1.1"
+	},
+	"devDependencies": {},
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/zlyfer/DiscordDynChanBot.git"
+	},
+	"keywords": [
+		"Discord"
+	],
+	"author": "zlyfer",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/zlyfer/DiscordDynChanBot/issues"
+	},
+	"homepage": "https://github.com/zlyfer/DiscordDynChanBot#readme"
 }

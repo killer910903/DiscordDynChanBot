@@ -2,18 +2,17 @@
 // process.chdir("/home/zlyfer/DiscordBots/DiscordDynChanBot-Rewrite");
 
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! //
-// !!!!!!!!!!!!!!FIXME: lockPermissions -> Waiting for discord.js fix!!!!!!!!!!!!!!! //
+// !!!!!!!!!!!!! FIXME: lockPermissions -> Waiting for discord.js fix !!!!!!!!!!!!!! //
 // !Beware custom change of: https://github.com/discordjs/discord.js/pull/2800/files //
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! //
-
 // TODO: Check if the bot has permissions to perform an action, before attempting to!
 // TODO: Do all todos!
 // TODO: 1-Time message to all guild owners that the bot has been updated.
 // TODO: Welcome message to creator & info/help.
 // FIXME: Owner changes upon mute/unmute/join/leave.
 // FIXME: If owner changes permissions get cleared.
-// BUG:!! Setup: bitrate -> permissions: Duplicate message! // Doesn't matter due to web interface.
-// BUG: Duplicate ID for configurations when creating a new one. // Maybe Fixed!
+// FIXME:!! Setup: bitrate -> permissions: Duplicate message! // Doesn't matter due to web interface.
+// FIXME: Duplicate ID for configurations when creating a new one. // Maybe Fixed!
 
 const Discord = require("discord.js");
 const client = new Discord.Client();
@@ -165,6 +164,12 @@ client.on("guildCreate", guild => {
 });
 
 client.on("voiceStateUpdate", (oldMember, newMember) => {
+	// !! if (oMember.voiceChannel && (nMember.voiceChannel == undefined || nMember.voiceChannel != oMember.voiceChannel)) {
+	// !! 	console.log("left");
+	// !! }
+	// !! if (nMember.voiceChannel && (oMember.voiceChannel == undefined || oMember.voiceChannel != nMember.voiceChannel)) {
+	// !! 	console.log("joined");
+	// !! }
 	// Delete/Modify DynChan upon leaving such.
 	if (oldMember.voiceChannelID) {
 		let guild = oldMember.guild;
@@ -254,7 +259,7 @@ client.on("voiceStateUpdate", (oldMember, newMember) => {
 										tmpp.permission[p] = true;
 									});
 									overwrites.push(tmpp);
-									guild.createChannel(cname, "voice").then(voicechannel => {
+									guild.createChannel(cname, { type: "voice" }).then(voicechannel => {
 										if (voiceChannel) {
 											dcc.voiceChannel = voicechannel.id;
 											voicechannel
@@ -1218,20 +1223,20 @@ function showPermissions(message, args) {
 
 function translateName(val) {
 	switch (val) {
-	case 1:
-		return "Unique ID";
-	case 2:
-		return "Incrementing Number";
-	case 3:
-		return "Incrementing Roman Number";
-	case 4:
-		return "Username of Author";
-	case 5:
-		return "Nickname of Author";
-	case 6:
-		return "Fixed Name";
-	default:
-		return val;
+		case 1:
+			return "Unique ID";
+		case 2:
+			return "Incrementing Number";
+		case 3:
+			return "Incrementing Roman Number";
+		case 4:
+			return "Username of Author";
+		case 5:
+			return "Nickname of Author";
+		case 6:
+			return "Fixed Name";
+		default:
+			return val;
 	}
 }
 
