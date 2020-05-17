@@ -1,15 +1,15 @@
 {
   "name": "discorddynchanbot",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "description": "Dynamic temporary channel for every server. Keep your server clean!",
   "main": "index.js",
   "dependencies": {
-    "discord.js": "11.3.2"
+    "discord.js": "12.2.0",
+    "mysql": "^2.18.1",
+    "uniqid": "^5.2.0"
   },
   "devDependencies": {},
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "scripts": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/zlyfer/DiscordDynChanBot.git"
