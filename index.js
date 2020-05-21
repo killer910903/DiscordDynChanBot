@@ -1,5 +1,5 @@
 /* jshint esversion: 6 */
-// process.chdir("/home/zlyfer/DiscordBots/DiscordDynChanBot-Rewrite");
+process.chdir("/home/zlyfer/DiscordBots/DiscordDynChanBot-Rewrite");
 
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! //
 // !!!!!!!!!!!!! FIXME: lockPermissions -> Waiting for discord.js fix !!!!!!!!!!!!!! //
