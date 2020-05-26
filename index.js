@@ -18,8 +18,6 @@ const botPrefix = "--test";
 // Global variables:
 var guilds = []; // List of all guilds with their control roles and configurations.
 
-// TODO: Make the bot first load database configurations and then log in.
-
 bot.on("ready", () => {
   // Update bot activity status:
   updateStatus();
@@ -110,6 +108,7 @@ function updateStatus() {
     .then(console.log)
     .catch(console.error);
 }
+
 // Create guilds table, if it doesn't exist already, which includes all guilds the bot is member of:
 function createGuildTable() {
   return new Promise((resolve, reject) => {
@@ -134,7 +133,6 @@ function createConfigurationsTable() {
     );
   });
 }
-
 // Create control roles table, if it doesn't exist already, which includes all guild roles that can configure the bot:
 function createRolesTable() {
   return new Promise((resolve, reject) => {
