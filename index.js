@@ -14,15 +14,29 @@ const sql = mysql.createConnection({
 });
 // Default prefix the bot listens to:
 const botPrefix = "--test";
+// Permissions the bot needs to have to do it's stuff:
+const PERMISSIONS = ["VIEW_CHANNEL", "MANAGE_CHANNELS", "MOVE_MEMBERS", "CONNECT"];
 
 // Global variables:
 var guilds = []; // List of all guilds with their control roles and configurations.
 
+/* -------------------------------------------------------------------------- */
+/*                            FEATURES TO IMPLEMENT                           */
+/* -------------------------------------------------------------------------- */
+/*
+TODO: Interaction with bot.
+TODO: Configuration setup/edit/delete.
+TODO: Periodically all "dyn" channels to make them reloadable after a crash.
+TODO: Interface for web-configurator.
+*/
+/* -------------------------------------------------------------------------- */
+/*                                                                            */
+/* -------------------------------------------------------------------------- */
+
 bot.on("ready", () => {
+  console.log("Bot ready.");
   // Update bot activity status:
   updateStatus();
-
-  // TODO: Load guild configurations from database.
 });
 
 // Someone joined/left a voice channel or muted/unmuted themselves:
@@ -41,31 +55,154 @@ bot.on("voiceStateUpdate", (oldState, newState) => {
   function updateDynChan(guildID, userID, channelID, joined) {
     // Find "database guild" based on emitted guild id:
     let dynguild = guilds.find((g) => g.guildid == guildID);
+    // If the "dyn" guild was properly found:
     if (!dynguild) return;
-    // Check if the bot is activated on the selected guild:
-    else if (dynguild.enabled == 1) {
-      // Check if there is a configuration that has a triggerchannel which fits the emitted channel:
-      let dynconfig = dynguild.configurations.find((c) => c.triggerchannel == channelID);
-      if (!dynconfig) return;
-      // Check if the selected configuration is enabled:
-      else if (dynconfig.enabled == 1) {
-        /* -------------------------------------------------------------------------- */
-        /*                                TESTING START                               */
-        /* -------------------------------------------------------------------------- */
-        let guild = bot.guilds.resolve(guildID);
-        let member = guild.members.resolve(userID);
-        let channel = guild.channels.resolve(channelID);
-        console.log(
-          `${member.nickname || member.user.username} has ${joined ? "joined" : "left"} the trigger channel ${
-            channel.name
-          }.`
-        );
-        /* -------------------------------------------------------------------------- */
-        /*                                 TESTING END                                */
-        /* -------------------------------------------------------------------------- */
-        // TODO: Do DynChan stuff:
+    // Resolve guild object:
+    let guild = bot.guilds.resolve(guildID);
+    // If the guild could be resolved:
+    if (guild) {
+      // Resolve the bot's member object from the guild:
+      let botmember = guild.members.resolve(bot.user.id);
+      // If the user joined a channel:
+      if (joined) {
+        // Check if the bot is activated on the selected guild:
+        if (dynguild.enabled == 1) {
+          // Check if there is a configuration that has a triggerchannel which fits the emitted channel:
+          let dynconfig = dynguild.configurations.find((c) => c.triggerchannel == channelID);
+          // If there is a configuration linked to this "dyn" guild:
+          if (!dynconfig) return;
+          // Check if the selected configuration is enabled:
+          else if (dynconfig.enabled == 1) {
+            // Resolve trigger channel (to check permissions):
+            let triggerChan = guild.channels.resolve(channelID);
+            // If the trigger channel could be resolved:
+            if (!triggerChan) return;
+            // Resolve the category for "dyn" voice channels (to move voice channel and check permission):
+            let vcat = guild.channels.resolve(dynconfig.vcategory);
+            // NOTE: Maybe inefficient, to always resolve text category even if createtext is disabled:
+            // Resolve the category for "dyn" text channels (to move text channel and check permission):
+            var tcat = guild.channels.resolve(dynconfig.tcategory);
+            if (botmember && vcat && tcat) {
+              // Check if the bot has the permissions to do it's stuff:
+              if (
+                hasPerms(botmember, triggerChan) &&
+                hasPerms(botmember, vcat) &&
+                (hasPerms(botmember, tcat) || !dynconfig.createtext)
+              ) {
+                // setTimeout to add a delay based on "delay" option of configuration:
+                setTimeout(() => {
+                  // Resolve the user's member from guild:
+                  let member = guild.members.resolve(userID);
+                  // Create voice channel with correct settings:
+                  guild.channels
+                    .create(nameGen(dynconfig, member, "v"), {
+                      type: "voice",
+                      bitrate: dynconfig.vbitrate * 1000,
+                      userLimit: dynconfig.vuserlimit,
+                      parent: vcat,
+                      reason: `Created by: ${member.displayName}`,
+                    })
+                    .then((v) => {
+                      // If created successfully, add an entry to the dynchans object of the dynguild (to keep track of):
+                      dynguild.dynchans[v.id] = {
+                        voice: v,
+                      };
+                      // Move user to the voice channel:
+                      member.edit({ channel: v }, "Moved to their dynamic channel.").then().catch(console.warn);
+                      // If configuration has enabled "dyn" text channels:
+                      if (dynconfig.createtext) {
+                        // Create text channel with correct settings:
+                        guild.channels
+                          .create(nameGen(dynconfig, member, "t"), {
+                            type: "text",
+                            nsfw: dynconfig.tnsfw,
+                            topic: dynconfig.ttopic,
+                            parent: tcat,
+                            reason: `Created by: ${member.displayName}`,
+                          })
+                          .then((t) => {
+                            // If created successfully, add an entry to the dynchans object of the dynguild (to keep track of):
+                            dynguild.dynchans[v.id].text = t;
+                          })
+                          .catch(console.warn);
+                      }
+                    })
+                    .catch(console.warn);
+                }, dynconfig.delay * 1000);
+              } else {
+                console.warn("Missing permission!");
+                // TODO: Somehow communicate which permissions are missing.
+              }
+            }
+          }
+        }
+      } else {
+        // Get the dynchan object from the dynguild:
+        let dynchan = dynguild.dynchans[channelID];
+        // If the dynchan got retrieved successfully:
+        if (dynchan) {
+          // If voice channel is empty:
+          if (dynchan.voice.members.array().length == 0) {
+            // Check if the bot has permissions to delete the channel:
+            // NOTE: To be able to delete a voice channel, oddly the bot needs to have permissions to connect to it:
+            if (hasPerms()) {
+              // Delete voice channel:
+              dynchan.voice.delete("All users left.").then().catch(console.warn);
+              // Delete text channel:
+              dynchan.text.delete("All users left.").then().catch(console.warn);
+            } else {
+              console.warn("Missing permission!");
+              // TODO: Somehow communicate which permissions are missing.
+            }
+          } else {
+            // TODO: Update channel.
+          }
+        }
       }
     }
+  }
+
+  function hasPerms(member, channel) {
+    // NOTE: The bot basically checks if it has the permission declared above on the following channels: trigger channel, voice category, text category. However not all of the declared permissions are needed in every of these channels. In future the bot should only ask for the permissions really needed but can suggest all of them to be globally active to reduce the labor of the guild owner/admins. Below are the real permissions for each channel. In future the bot may need permissions to change permissions (Explanation following..).
+    // trigger channel: MOVE_MEMBERS
+    // voice category: VIEW_CHANNEL, MANAGE_CHANNELS, CONNECT
+    // text category: VIEW_CHANNEL, MANAGE_CHANNEL
+    return member.permissionsIn(channel).has(PERMISSIONS);
+  }
+
+  function nameGen(dynconfig, member, channeltype) {
+    /* -------------------------------------------------------------------------- */
+    /*                                 NAME LEGEND                                */
+    /* -------------------------------------------------------------------------- */
+    /*
+    1   : Username
+    2   : Nickname (custom per guild name)
+    3   : Displayname (default, nickname if exists else username)
+    IDEA: Counting numbers in arabic and roman style. -> Complicated!
+    IDEA: Variable pre- and suffix like the infix.
+    IDEA: First owner. -> Complicated!
+    ELSE: Fixed text
+    */
+    /* -------------------------------------------------------------------------- */
+    /*                                                                            */
+    /* -------------------------------------------------------------------------- */
+
+    let name = "";
+    switch (dynconfig[`${channeltype}infix`]) {
+      case "1":
+        name = member.user.username;
+        break;
+      case "2":
+        name = member.nickname;
+        break;
+      case "3":
+        name = member.displayName.toString();
+        break;
+      default:
+        name = dynconfig[`${channeltype}infix`];
+        break;
+    }
+    return `${dynconfig[`${channeltype}prefix`]} ${name} ${dynconfig[`${channeltype}suffix`]}`;
   }
 });
 
@@ -77,11 +214,12 @@ bot.on("guildCreate", (guild) => {
   sql.query(
     `INSERT INTO guilds (guildid, prefix, secret, enabled) VALUES ('${
       guild.id
-    }', '${uniqid()}', '${botPrefix}', '1') ON DUPLICATE KEY UPDATE secret = '${uniqid()}'`,
+    }', '${botPrefix}', '${uniqid()}', '1') ON DUPLICATE KEY UPDATE secret = '${uniqid()}'`,
     (error, result) => {
       if (error) console.error(error);
     }
   );
+  // TODO: Somehow tell the user who invited the bot the first steps to configure it.
 });
 
 // Bot got removed from a Discord guild:
@@ -105,7 +243,7 @@ function updateStatus() {
         name: `${guildcount} Servers`,
       },
     })
-    .then(console.log)
+    .then()
     .catch(console.error);
 }
 
@@ -193,10 +331,11 @@ Promise.all([createGuildTable(), createConfigurationsTable(), createRolesTable()
     Promise.all([loadGuildTable(), loadConfigurationsTable(), loadRolesTable()])
       .then((results) => {
         results = objectify(results);
-        // Add the guild's configuration and control roles to the new guild object and add it to the "guilds" array:
+        // Add the guild's configurations, control roles and an empty list for dynchans to keep track of to the new guild object and add it to the "guilds" array:
         results[0].forEach((guild) => {
           guild.configurations = results[1].filter((c) => c.guildid == guild.guildid);
           guild.controlRoles = results[2].filter((cr) => cr.guildid == guild.guildid);
+          guild.dynchans = {};
           guilds.push(guild);
         });
         // Log bot in:
