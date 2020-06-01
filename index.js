@@ -15,7 +15,11 @@ const sql = mysql.createConnection({
 // Default prefix the bot listens to:
 const botPrefix = "--test";
 // Permissions the bot needs to have to do it's stuff:
-const PERMISSIONS = ["VIEW_CHANNEL", "MANAGE_CHANNELS", "MOVE_MEMBERS", "CONNECT"];
+const PERMISSIONS = {
+  triggerchannel: ["MOVE_MEMBERS"],
+  vcategory: ["MANAGE_CHANNELS", "VIEW_CHANNEL", "CONNECT"],
+  tcategory: ["MANAGE_CHANNELS", "VIEW_CHANNEL"],
+};
 
 // Global variables:
 var guilds = []; // List of all guilds with their control roles and configurations.
@@ -45,9 +49,10 @@ bot.on("voiceStateUpdate", (oldState, newState) => {
   let newChannel = newState.channel;
 
   // Basically check if the user joined/left a voice channel:
-  if (oldChannel === null && newChannel !== null) {
+  if (oldChannel !== newChannel && newChannel !== null) {
     updateDynChan(newState.guild.id, newState.id, newState.channelID, true);
-  } else if (newChannel === null) {
+  }
+  if (oldChannel !== newChannel) {
     updateDynChan(oldState.guild.id, oldState.id, oldState.channelID, false);
   }
 
@@ -84,11 +89,7 @@ bot.on("voiceStateUpdate", (oldState, newState) => {
             var tcat = guild.channels.resolve(dynconfig.tcategory);
             if (botmember && vcat && tcat) {
               // Check if the bot has the permissions to do it's stuff:
-              if (
-                hasPerms(botmember, triggerChan) &&
-                hasPerms(botmember, vcat) &&
-                (hasPerms(botmember, tcat) || !dynconfig.createtext)
-              ) {
+              if (!hasPerms([dynconfig])[dynconfig.configid].missing) {
                 // setTimeout to add a delay based on "delay" option of configuration:
                 setTimeout(() => {
                   // Resolve the user's member from guild:
@@ -105,6 +106,7 @@ bot.on("voiceStateUpdate", (oldState, newState) => {
                     .then((v) => {
                       // If created successfully, add an entry to the dynchans object of the dynguild (to keep track of):
                       dynguild.dynchans[v.id] = {
+                        config: dynconfig,
                         voice: v,
                       };
                       // Move user to the voice channel:
@@ -129,9 +131,6 @@ bot.on("voiceStateUpdate", (oldState, newState) => {
                     })
                     .catch(console.warn);
                 }, dynconfig.delay * 1000);
-              } else {
-                console.warn("Missing permission!");
-                // TODO: Somehow communicate which permissions are missing.
               }
             }
           }
@@ -143,31 +142,89 @@ bot.on("voiceStateUpdate", (oldState, newState) => {
         if (dynchan) {
           // If voice channel is empty:
           if (dynchan.voice.members.array().length == 0) {
-            // Check if the bot has permissions to delete the channel:
-            // NOTE: To be able to delete a voice channel, oddly the bot needs to have permissions to connect to it:
-            if (hasPerms()) {
-              // Delete voice channel:
-              dynchan.voice.delete("All users left.").then().catch(console.warn);
-              // Delete text channel:
-              dynchan.text.delete("All users left.").then().catch(console.warn);
-            } else {
-              console.warn("Missing permission!");
-              // TODO: Somehow communicate which permissions are missing.
-            }
+            // Delete voice channel:
+            dynchan.voice
+              .delete("All users left.")
+              .then(() => {
+                // Delete text channel:
+                if (dynchan.text) dynchan.text.delete("All users left.").then().catch(console.warn);
+              })
+              .catch(console.warn);
           } else {
             // TODO: Update channel.
           }
         }
       }
     }
-  }
 
-  function hasPerms(member, channel) {
-    // NOTE: The bot basically checks if it has the permission declared above on the following channels: trigger channel, voice category, text category. However not all of the declared permissions are needed in every of these channels. In future the bot should only ask for the permissions really needed but can suggest all of them to be globally active to reduce the labor of the guild owner/admins. Below are the real permissions for each channel. In future the bot may need permissions to change permissions (Explanation following..).
-    // trigger channel: MOVE_MEMBERS
-    // voice category: VIEW_CHANNEL, MANAGE_CHANNELS, CONNECT
-    // text category: VIEW_CHANNEL, MANAGE_CHANNEL
-    return member.permissionsIn(channel).has(PERMISSIONS);
+    function hasPerms(dynconfigs, force = false) {
+      let result = {};
+      dynconfigs.forEach((dc) => {
+        let guild = bot.guilds.resolve(dc.guildid);
+        let botmember = guild.members.resolve(bot.user.id);
+        let owner = guild.owner;
+        result[dc.configid] = {
+          missing: false,
+        };
+        ["triggerchannel", "vcategory", "tcategory"].forEach((c) => {
+          let guildChan = guild.channels.resolve(dc[c]);
+          result[dc.configid][c] = {
+            name: guildChan.name,
+            id: dc[c],
+            text: "",
+          };
+          PERMISSIONS[c].forEach((p, index) => {
+            if (!botmember.permissionsIn(guildChan).has(p)) {
+              result[dc.configid][c].text += `**${p}**, `;
+              result[dc.configid].missing = true;
+            }
+          });
+          result[dc.configid][c].text = result[dc.configid][c].text.slice(0, -2);
+          if (result[dc.configid][c].text == "") result[dc.configid][c].text = "**None**";
+        });
+        if (force || (!dc.missingPermissionsNotified && result[dc.configid].missing)) {
+          dc.missingPermissionsNotified = true;
+          setTimeout(
+            () => {
+              dc.missingPermissionsNotified = false;
+            },
+            86400000,
+            dc
+          );
+          let message = {
+            content: `Hello,\nI am sending you a report of all permissions I lack on your server: "**${guild.name}**".\nThis permissions check was either sent because you requested it or because I tried to do something that I don't have permissions for.\nDetails below:`,
+            embed: {
+              title: "Missing Permissions Report:",
+              description: `Following contains all missing permissions for configuration: "**${dc.name}**":`,
+              color: result[dc.configid].missing ? 15022389 : 4431943,
+              footer: {
+                icon_url: "https://cdn.discordapp.com/icons/388758806693412866/8036a4a08b5a69c0dc74de88352b39f2.png",
+                text: "If you need help, feel free to join my Discord: https://discord.gg/hwrb46E",
+              },
+              thumbnail: {
+                url: `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png`,
+              },
+              fields: [
+                {
+                  name: `Trigger Channel: '${result[dc.configid].triggerchannel.name}'`,
+                  value: `*Channel ID: ${dc.triggerchannel}*\n${result[dc.configid].triggerchannel.text}`,
+                },
+                {
+                  name: `Voice Category: '${result[dc.configid].vcategory.name}'`,
+                  value: `*Channel ID: ${dc.vcategory}*\n${result[dc.configid].vcategory.text}`,
+                },
+                {
+                  name: `Text Category: '${result[dc.configid].tcategory.name}'`,
+                  value: `*Channel ID: ${dc.tcategory}*\n${result[dc.configid].tcategory.text}`,
+                },
+              ],
+            },
+          };
+          owner.send(message).then().catch(console.warn);
+        }
+      });
+      return result;
+    }
   }
 
   function nameGen(dynconfig, member, channeltype) {
