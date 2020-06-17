@@ -30,7 +30,7 @@ var guilds = []; // List of all guilds with their control roles and configuratio
 /*
 TODO: Interaction with bot.
 TODO: Configuration setup/edit/delete.
-TODO: Periodically all "dyn" channels to make them reloadable after a crash.
+IDEA: Periodically save all "dyn" channels to make them reloadable after a crash.
 TODO: Interface for web-configurator.
 */
 /* -------------------------------------------------------------------------- */
@@ -146,6 +146,8 @@ bot.on("voiceStateUpdate", (oldState, newState) => {
             dynchan.voice
               .delete("All users left.")
               .then(() => {
+                // Remove entry from dynchans:
+                delete dynguild.dynchans[channelID];
                 // Delete text channel:
                 if (dynchan.text) dynchan.text.delete("All users left.").then().catch(console.warn);
               })
@@ -235,10 +237,10 @@ bot.on("voiceStateUpdate", (oldState, newState) => {
     1   : Username
     2   : Nickname (custom per guild name)
     3   : Displayname (default, nickname if exists else username)
+    Else: Fixed text
     IDEA: Counting numbers in arabic and roman style. -> Complicated!
     IDEA: Variable pre- and suffix like the infix.
     IDEA: First owner. -> Complicated!
-    ELSE: Fixed text
     */
     /* -------------------------------------------------------------------------- */
     /*                                                                            */
