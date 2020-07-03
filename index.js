@@ -1404,6 +1404,9 @@ function genName(dcg, vt, conID, member) {
         if (member.nickname) gen[i].g = member.nickname;
         else gen[i].g = member.user.username;
         break;
+      case "null":
+        gen[i] = "";
+        break;
       default:
         gen[i].g = gen[i].o;
         break;
