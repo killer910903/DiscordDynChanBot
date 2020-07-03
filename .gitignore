@@ -7,3 +7,5 @@ node_modules
 desktop.ini
 .vscode
 test.js
+token.txt
+credentials.json
