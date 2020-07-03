@@ -1300,15 +1300,15 @@ function translateName(val) {
   switch (val) {
     case 1:
       return "Unique ID";
+    // case 2:
+    //   return "Incrementing Number";
+    // case 3:
+    //   return "Incrementing Roman Number";
     case 2:
-      return "Incrementing Number";
-    case 3:
-      return "Incrementing Roman Number";
-    case 4:
       return "Username of Author";
-    case 5:
+    case 3:
       return "Nickname of Author";
-    case 6:
+    case 4:
       return "Fixed Name";
     default:
       return val;
@@ -1391,16 +1391,16 @@ function genName(dcg, vt, conID, member) {
       case 1:
         gen[i].g = dcc.uniqueNameId;
         break;
+      // case 2:
+      //   gen[i].g = dcg.channels[conID].length;
+      //   break;
+      // case 3:
+      //   gen[i].g = RomanNumerals.convert(dcg.channels[conID].length);
+      //   break;
       case 2:
-        gen[i].g = dcg.channels[conID].length;
-        break;
-      case 3:
-        gen[i].g = RomanNumerals.convert(dcg.channels[conID].length);
-        break;
-      case 4:
         gen[i].g = member.user.username;
         break;
-      case 5:
+      case 3:
         if (member.nickname) gen[i].g = member.nickname;
         else gen[i].g = member.user.username;
         break;
